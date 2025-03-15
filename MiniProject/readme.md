@@ -17,10 +17,15 @@ Overview
 
     Purpose:
         Read raw data from LogisticGrowthData.csv.
+
         Clean the data by filtering records (e.g., Time >= 0 and PopBio > 0) and computing log(PopBio).
+
         Generate a unique ID for each dataset by concatenating key fields.
+
         Save the cleaned data to ../data/modified_growth_data.csv.
-        (Optional) Fit quadratic and cubic polynomial models for each dataset and save model comparison metrics (AICc and BIC) to ../results/model_comparison_linear.csv.
+
+        (Optional) Fit quadratic and cubic polynomial models for each dataset and save model comparison metrics (AICc and BIC) 
+        to ../results/model_comparison_linear.csv.
 
 Dependencies
 
@@ -42,12 +47,15 @@ Overview
 
     Purpose:
         Read the cleaned data from ../data/modified_growth_data.csv.
+
         Define four nonlinear growth model formulas:
             Logistic Model
             Gompertz Model
             Baranyi Model
             Three-Phase Linear Model
+
         Implement multi-start fitting functions using nlsLM to search for optimal parameters with random initial values.
+
         These functions are used later for model comparison and visualization.
 
 Dependencies
@@ -67,10 +75,15 @@ Overview
 
     Purpose:
         Read the cleaned data and polynomial model comparison results.
+
         Strictly fit four nonlinear models (Logistic, Gompertz, Baranyi, and Three-Phase) for each dataset using the functions defined in the previous script.
+
         Merge the linear (polynomial) and nonlinear model results.
+
         Select the best model for each dataset based on AICc and BIC.
+
         Calculate Akaike weights for the fitted models.
+
         Generate comparison plots:
             A bar plot showing best model counts (based on AICc and BIC).
             A boxplot of the Akaike weight distributions.
@@ -91,7 +104,9 @@ Overview
 
     Purpose:
         Extract parameter estimates from the four nonlinear models fitted for each dataset.
+
         Tidy and combine these parameters into one data frame.
+
         Visualize the distribution of each parameter (e.g., r_max, K, N0, t_lag) across different models using boxplots.
 
 Dependencies
@@ -110,8 +125,11 @@ Overview
 
     Purpose:
         For each dataset (ID), fit six models (Quadratic, Cubic, Logistic, Gompertz, Baranyi, and Three-Phase) while allowing partial model fitting (i.e., if some models fail, plot those that succeed).
+
         If no model fits are successful, plot only the raw data.
+
         Otherwise, plot the raw data along with fitted lines from all successful models.
+
         Save the output plots for each ID to the ../results/ directory.
 
 Dependencies
@@ -129,8 +147,11 @@ Overview
 
     Purpose:
         Check for an existing main.log file and remove it if present.
+
         Ensure the current directory is writable.
+
         Compile the LaTeX document main.tex using the pdflatex command.
+
         Provide feedback on whether the compilation succeeded or failed.
 
 Dependencies
@@ -148,6 +169,7 @@ Overview
 
     Purpose:
         The main.tex file contains the LaTeX code for compiling the final report of the analysis.
+        
         It integrates figures, tables, and summaries generated from the R scripts.
 
 8. Pipeline Script: run_pipeline.sh
