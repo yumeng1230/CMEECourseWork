@@ -1,21 +1,20 @@
 \documentclass[12pt]{article}
+
 \usepackage{natbib}
 \usepackage{amsmath}
 \usepackage{graphicx}
-\usepackage{geometry}
+\usepackage[a4paper, margin=1in]{geometry} 
 \usepackage{subcaption}
-\usepackage{float} 
-
-\usepackage{amsmath}
-\usepackage{graphicx}
-\usepackage{subcaption} 
-\usepackage{siunitx}    
-\usepackage{placeins}   
+\usepackage{float}
+\usepackage{siunitx}
+\usepackage{placeins}
 \usepackage{tikz}
+\usepackage[utf8]{inputenc}
+
 \usetikzlibrary{shapes.geometric, arrows}
-\usepackage[margin=1in]
-{geometry}\geometry{a4paper, margin=1in}
 \usepackage{times}
+
+
 
 
 \newcommand\wordcount{%
@@ -125,7 +124,7 @@ I also assessed the convergence success rate of each model. The Logistic model f
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\textwidth]{../results/akaike_weights_boxplot_nice.png}
+    \includegraphics[width=0.7\textwidth]{../results/akaike_weights_boxplot.png}
     \caption{Distribution of Akaike Weights Across Models. This boxplot illustrates the Akaike weight distributions for six models: Baranyi, Cubic, Gompertz, Logistic, Quadratic, and Three-Phase. The Akaike weight represents the relative likelihood of each model being the best fit. Models with higher median Akaike weights are more frequently selected as the best. Some models show consistently low Akaike weights, indicating weaker performance. Individual points represent data variability, with black dots showing Akaike weights for each model.}
     \label{fig:akaike_weights}
 \end{figure}
@@ -159,7 +158,7 @@ In terms of linear models, although quadratic and cubic polynomial models often 
   %----- Left Figure (Figure 3) -----
   \begin{minipage}[t]{0.48\textwidth}
     \centering
-    \includegraphics[width=\linewidth]{6models_ID_11.png}
+    \includegraphics[width=\linewidth]{../results/6models_ID_11.png}
     \captionof{figure}{%
       Fitted results for dataset \textbf{ID = 11} . 
       The Quadratic and Cubic polynomial models often achieve stable numerical convergence 
@@ -173,7 +172,7 @@ In terms of linear models, although quadratic and cubic polynomial models often 
   %----- Right Figure (Figure 4) -----
   \begin{minipage}[t]{0.48\textwidth}
     \centering
-    \includegraphics[width=\linewidth]{6models_ID_128.png}
+    \includegraphics[width=\linewidth]{../results/6models_ID_128.png}
     \captionof{figure}{%
       Fitted results for dataset \textbf{ID = 128} .
       The Three-Phase Linear Model (piecewise linear) captures nonlinear transitions 
@@ -194,7 +193,7 @@ In nonlinear S-shaped growth models, the Logistic, Baranyi, and improved Gompert
   \begin{minipage}[t]{0.45\textwidth}
     \centering
     % Assume the image filename is ID67.png
-    \includegraphics[width=\linewidth]{6models_ID_67.png}
+    \includegraphics[width=\linewidth]{../results/6models_ID_67.png}
     \captionof{figure}{%
       \textbf Fitted results for dataset ID=67. 
       The exponential growth phase exhibits significant asymmetry, 
@@ -209,7 +208,7 @@ In nonlinear S-shaped growth models, the Logistic, Baranyi, and improved Gompert
   \begin{minipage}[t]{0.45\textwidth}
     \centering
     % Assume the image filename is param_N0.png
-    \includegraphics[width=\linewidth]{nonlinear_parameter_comparison_N0.png}
+    \includegraphics[width=\linewidth]{../results/nonlinear_parameter_comparison_N0.png}
     \captionof{figure}{%
       \textbf Comparison of \(N_0\) parameter estimates 
       across different nonlinear models. 
@@ -228,7 +227,7 @@ Since the improved Gompertz model is more flexible than the Logistic model and c
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{nonlinear_parameter_comparison_r_max.png}
+    \includegraphics[width=0.8\textwidth]{../results/nonlinear_parameter_comparison_r_max.png}
     \caption{%
         \textbf Comparison of parameter \(r_{\max}\) estimates in nonlinear models.
         The boxplot shows the distribution of \(r_{\max}\) (maximum growth rate) for each model. 
@@ -238,7 +237,7 @@ Since the improved Gompertz model is more flexible than the Logistic model and c
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{nonlinear_parameter_comparison_t_lag.png}
+    \includegraphics[width=0.8\textwidth]{../results/nonlinear_parameter_comparison_t_lag.png}
     \caption{%
         \textbf Comparison of parameter \(t_{\mathrm{lag}}\) estimates in nonlinear models
         (Baranyi, Gompertz, and Three-Phase). The boxplot displays the range and distribution of
@@ -251,9 +250,9 @@ In microbial growth modeling, a key challenge is balancing biological realism wi
 Another layer of complexity arises from the fact that many experimental datasets are incomplete, covering only certain portions of the growth curve. If researchers collect biomass measurements at fewer time points or fail to capture the early or late growth phases, even well-designed models may struggle to estimate parameters reliably. For example, if data do not sufficiently cover the stationary phase, Logistic and Baranyi models may introduce significant biases when estimating the environmental carrying capacity ($K$). Conversely, if lag phase data are missing, all models that assume the presence of a lag phase (such as Baranyi and Gompertz) may inaccurately estimate $t_{\text{lag}}$, affecting the final fitting results. Additionally, traditional nonlinear least squares (NLS) or maximum likelihood estimation (MLE) methods may become trapped in local minima if initial parameter selection is suboptimal, thereby impacting model convergence \citep{BurnhamAnderson2002}. These issues highlight the need for carefully designed data collection strategies to ensure comprehensive coverage of all critical growth phases, such as implementing more frequent automated sampling or conducting preliminary studies before formal experiments to determine reasonable ranges for the lag and stationary phases.
 
 In conclusion, the findings of this study indicate that no single model is optimal across all datasets. Data quality and completeness are crucial for the reliable estimation of key parameters. Even theoretically more biologically mechanistic models, such as the Baranyi model, may perform poorly if lag phase data are insufficient. Similarly, highly flexible models, such as the improved Gompertz model, can adapt to various datasets but may introduce parameter uncertainty when data are sparse or noisy. Therefore, future research should integrate more comprehensive data collection, robust parameter estimation methods, and transparent model comparison strategies to enhance the reliability and biological applicability of microbial growth predictions.
-\clearpage
-\bibliographystyle{apalike} 
-\bibliography{references}   
+
+\bibliographystyle{plain}  % or another style you prefer
+\bibliography{references}   % ensure the .bib file name is correct
 
 
 \end{document}
