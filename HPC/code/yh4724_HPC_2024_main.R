@@ -157,14 +157,13 @@ question_2 <- function(){
 
 # Question 5
 question_5 <- function() {
-  # 1. Identify all results files in the current directory
+  # Identify all results files in the current directory
   files <- list.files(pattern = "^results_\\d+\\.rda$")
   if (length(files) == 0) {
     stop("No 'results_*.rda' files found in the current working directory.")
   }
   
-  # 2. Define the four initial conditions and track their extinction counts
-  #    We'll store them in a data frame for convenience
+  #  Define the four initial conditions and track their extinction counts
   group_labels <- c(
     "adults, large population",
     "adults, small population",
@@ -178,7 +177,7 @@ question_5 <- function() {
     stringsAsFactors = FALSE
   )
   
-  # 3. Function to map job number to initial condition label
+  # Function to map job number to initial condition label
   map_job_to_label <- function(job_num) {
     if (job_num >= 1 && job_num <= 25) {
       return("adults, large population")
@@ -191,7 +190,7 @@ question_5 <- function() {
     }
   }
   
-  # 4. Read each file, load 'results_list', and count extinctions
+  # Read each file, load 'results_list', and count extinctions
   for (file in files) {
     # Extract the job number from the file name
     job_str <- sub("results_(\\d+)\\.rda", "\\1", file)
@@ -208,7 +207,6 @@ question_5 <- function() {
     }
     
     # Count how many simulations are extinct
-    # We assume each element 'sim' is a numeric vector where the last value is final population
     extinct_count <- 0
     total_count   <- length(results_list)
     for (sim in results_list) {
@@ -226,10 +224,10 @@ question_5 <- function() {
     rm(results_list)
   }
   
-  # 5. Compute extinction proportions
+  # Compute extinction proportions
   results_df$proportion <- results_df$extinct / results_df$total
   
-  # 6. Plot the bar chart and save as 'question_5.png'
+  # Plot the bar chart and save as 'question_5.png'
   png("question_5.png", width = 800, height = 600)
   
   # Capture bar positions so we can label them
@@ -243,7 +241,7 @@ question_5 <- function() {
     col         = c("blue", "green", "orange", "purple")
   )
   
-  # Optionally, place numeric labels above each bar
+ 
   text(
     x      = bar_positions,
     y      = results_df$proportion,
@@ -254,11 +252,11 @@ question_5 <- function() {
   
   dev.off()
   
-  # 7. Identify which group has the highest extinction proportion
+  # Identify which group has the highest extinction proportion
   max_idx   <- which.max(results_df$proportion)
   max_group <- results_df$group[max_idx]
   
-  # 8. Return a plain text answer
+  #Return a plain text answer
   explanation <- paste(
     "Which population was most likely to go extinct?\n",
     "The highest extinction proportion was for '", max_group, 
@@ -272,6 +270,127 @@ question_5 <- function() {
 }
 
 # Question 6
+question_6 <- function() {
+  # If growth_matrix etc. are not defined in the environment, define defaults
+  if (!exists("growth_matrix")) {
+    growth_matrix <- matrix(c(0.1, 0.0, 0.0, 0.0,
+                              0.5, 0.4, 0.0, 0.0,
+                              0.0, 0.4, 0.7, 0.0,
+                              0.0, 0.0, 0.25, 0.4), nrow = 4, byrow = TRUE)
+  }
+  if (!exists("reproduction_matrix")) {
+    reproduction_matrix <- matrix(c(0.0, 0.0, 0.0, 2.6,
+                                    0.0, 0.0, 0.0, 0.0,
+                                    0.0, 0.0, 0.0, 0.0,
+                                    0.0, 0.0, 0.0, 0.0), nrow = 4, byrow = TRUE)
+  }
+  if (!exists("simulation_length")) {
+    simulation_length <- 120
+  }
+  if (!exists("num_stages")) {
+    num_stages <- 4
+  }
+  
+  # Combine growth and reproduction into the projection matrix
+  projection_matrix <- growth_matrix + reproduction_matrix
+  
+  # Find simulation result files
+  files <- list.files(pattern = "^results_\\d+\\.rda$")
+  if (length(files) == 0) {
+    stop("No results files found in the working directory.")
+  }
+  
+  # Prepare lists for big_spread vs small_spread
+  sims_big_spread <- list()
+  sims_small_spread <- list()
+  
+  # Read each file
+  for (file in files) {
+    iter_num <- as.numeric(sub("results_(\\d+)\\.rda", "\\1", file))
+    if (iter_num < 51) next  # skip conditions 1 and 2
+    
+    if (iter_num >= 51 && iter_num <= 75) {
+      group_label <- "big_spread"
+    } else {
+      group_label <- "small_spread"
+    }
+    
+    load(file)
+    if (!exists("results_list")) {
+      warning(paste("File", file, "does not contain results_list. Skipping."))
+      next
+    }
+    
+    # Collect time series into respective lists
+    for (sim in results_list) {
+      if (group_label == "big_spread") {
+        sims_big_spread[[length(sims_big_spread) + 1]] <- sim
+      } else {
+        sims_small_spread[[length(sims_small_spread) + 1]] <- sim
+      }
+    }
+    rm(results_list)
+  }
+  
+  if (length(sims_big_spread) == 0 || length(sims_small_spread) == 0) {
+    stop("Not enough data for one or both 'mixed' conditions.")
+  }
+  
+  # Compute average (mean) population trends
+  mat_big <- do.call(rbind, sims_big_spread)
+  avg_trend_big <- colMeans(mat_big)
+  
+  mat_small <- do.call(rbind, sims_small_spread)
+  avg_trend_small <- colMeans(mat_small)
+  
+  # Deterministic simulation
+  init_big <- state_initialise_spread(num_stages, 100)
+  init_small <- state_initialise_spread(num_stages, 10)
+  
+  det_trend_big <- deterministic_simulation(init_big, projection_matrix, simulation_length)
+  det_trend_small <- deterministic_simulation(init_small, projection_matrix, simulation_length)
+  
+  if (is.matrix(det_trend_big)) {
+    det_trend_big <- rowSums(det_trend_big)
+  }
+  if (is.matrix(det_trend_small)) {
+    det_trend_small <- rowSums(det_trend_small)
+  }
+  
+  # Compute deviations
+  deviation_big <- avg_trend_big / det_trend_big
+  deviation_small <- avg_trend_small / det_trend_small
+  
+  # Create time vector
+  time_vec <- 0:(length(avg_trend_big) - 1)
+  
+  # Determine axis ranges
+  x_range <- c(min(time_vec), max(time_vec))
+  y_range <- range(c(deviation_big, deviation_small))
+  
+  # Plot
+  png("question_6.png", width = 800, height = 600)
+  plot(time_vec, deviation_big, type = "l", col = "blue", lwd = 2,
+       xlab = "Time Step", ylab = "Deviation (Stochastic / Deterministic)",
+       main = "Deviation of Stochastic Trend from Deterministic Model",
+       xlim = x_range, ylim = y_range)
+  lines(time_vec, deviation_small, col = "red", lwd = 2)
+  legend("topright", legend = c("Big mixed", "Small mixed"),
+         col = c("blue", "red"), lty = 1, lwd = 2)
+  dev.off()
+  
+  # Decide which condition is closer to deterministic
+  avg_dev_big <- mean(abs(deviation_big - 1))
+  avg_dev_small <- mean(abs(deviation_small - 1))
+  
+  if (avg_dev_big < avg_dev_small) {
+    answer <- "For the large mixed initial condition, the average stochastic trend is closer to the deterministic model. Larger populations reduce demographic noise, leading to smaller deviations."
+  } else {
+    answer <- "For the small mixed initial condition, the average stochastic trend is closer to the deterministic model. Despite the smaller population, these simulations ended up tracking the deterministic model more closely on average."
+  }
+  
+  return(answer)
+}
 
 
 # Question 7
@@ -687,13 +806,97 @@ plot_neutral_cluster_results <- function() {
 
 # Challenge question A
 Challenge_A <- function() {
+  # Load necessary package
+  if(!require(ggplot2)) {
+    install.packages("ggplot2")
+    library(ggplot2)
+  }
   
-  png(filename="Challenge_A.png", width = 600, height = 400)
-  # Plot your graph here
-  Sys.sleep(0.1)
-  dev.off()
+  # List all result files from the cluster simulation
+  files <- list.files(pattern = "^results_\\d+\\.rda$")
+  if(length(files) == 0) {
+    stop("No results files found in the working directory.")
+  }
   
+  # Initialize list for collecting simulation data frames
+  simulation_data_list <- list()
+  simulation_counter <- 1
+  
+  # Loop through each file
+  for (file in files) {
+    # Extract job number from filename
+    job_num <- as.numeric(sub("results_(\\d+)\\.rda", "\\1", file))
+    
+    # Determine the initial condition label based on job number
+    if (job_num >= 1 && job_num <= 25) {
+      init_cond <- "large adult"
+    } else if (job_num >= 26 && job_num <= 50) {
+      init_cond <- "small adult"
+    } else if (job_num >= 51 && job_num <= 75) {
+      init_cond <- "large mixed"
+    } else {
+      init_cond <- "small mixed"
+    }
+    
+    # Load the file (which should produce a variable called results_list)
+    load(file)  # results_list is now in the environment
+    if (!exists("results_list")) {
+      warning(paste("File", file, "does not contain results_list. Skipping."))
+      next
+    }
+    
+    # For each simulation run in results_list, create a data frame of time series data.
+    # Each simulation is assumed to be a numeric vector recording population sizes.
+    for (sim in results_list) {
+      # Create time steps: assume the simulation vector includes time 0.
+      time_steps <- 0:(length(sim) - 1)
+      df_sim <- data.frame(
+        simulation_number = simulation_counter,
+        initial_condition = init_cond,
+        time_step = time_steps,
+        population_size = sim,
+        stringsAsFactors = FALSE
+      )
+      
+      simulation_data_list[[length(simulation_data_list) + 1]] <- df_sim
+      simulation_counter <- simulation_counter + 1
+    }
+    
+    # Remove results_list to avoid conflicts with the next file
+    rm(results_list)
+  }
+  
+  # Combine all simulation data frames into one long-form data frame.
+  population_size_df <- do.call(rbind, simulation_data_list)
+  
+  # Save the data frame in the global environment.
+  assign("population_size_df", population_size_df, envir = .GlobalEnv)
+  
+  # Create the ggplot: each simulation is a faint line colored by initial condition.
+  p <- ggplot(population_size_df, aes(x = time_step, y = population_size,
+                                      group = simulation_number, colour = initial_condition)) +
+    geom_line(alpha = 0.1) +
+    labs(x = "Time Step", y = "Population Size",
+         title = "Population Size Time Series from Cluster Simulations") +
+    theme_minimal() +
+    # Add expansion to ensure full display of axes
+    scale_x_continuous(expand = expansion(mult = c(0.05, 0.05))) +
+    scale_y_continuous(expand = expansion(mult = c(0.05, 0.05)))
+  
+  # Save the plot as Challenge_A.png
+  ggsave("Challenge_A.png", plot = p, width = 10, height = 6)
+  
+  # Return plain text answer
+  answer <- "The data frame 'population_size_df' has been created and the plot saved as 'Challenge_A.png'. Each row in the data frame represents a time point from a unique simulation run, with its initial condition noted. The plot, created with faint overlapping lines, visualizes the population size trajectories from all simulations. The axis expansion ensures that all plot coordinates are fully visible."
+  
+  return(answer)
 }
+
+# Run the function
+result_text <- Challenge_A()
+print(result_text)
+
+
 
 # Challenge question B
 Challenge_B <- function() {

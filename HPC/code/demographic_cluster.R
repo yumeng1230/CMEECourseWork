@@ -20,7 +20,7 @@ num_stages <- 4           # There are 4 life stages in the model
 growth_matrix <- matrix(c(0.1, 0.0, 0.0, 0.0,
                           0.5, 0.4, 0.0, 0.0,
                           0.0, 0.4, 0.7, 0.0,
-                          0.0, 0.0, 0.2, 0.4), nrow = 4, byrow = TRUE)
+                          0.0, 0.0, 0.25, 0.4), nrow = 4, byrow = TRUE)
 
 reproduction_matrix <- matrix(c(0.0, 0.0, 0.0, 2.6,
                                 0.0, 0.0, 0.0, 0.0,
