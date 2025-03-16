@@ -1,4 +1,0 @@
-These R modules still work but are no longer supported. Please read how to manage your own R environment at https://icl-rcs-user-guide.readthedocs.io/en/latest/hpc/applications/guides/R/ 
-
-Loading R/3.3.2
-  Loading requirement: gcc/4.9.1
