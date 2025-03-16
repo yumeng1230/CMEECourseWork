@@ -799,13 +799,13 @@ neutral_cluster_run <- function(speciation_rate, size, wall_time, interval_rich,
 
 # Question 26 
 process_neutral_cluster_results <- function() {
-  # 1) Identify and read all results files
+  # Identify and read all results files
   files <- list.files(pattern = "^neutral_cluster_output_\\d+\\.rda$")
   if (length(files) == 0) {
     stop("No '^neutral_cluster_output_\\d+\\.rda$' files found in the current directory.")
   }
   
-  # 2) Prepare data structures to accumulate sums of octave vectors
+  #  Prepare data structures to accumulate sums of octave vectors
   #    We'll track four community sizes: 500, 1000, 2500, 5000
   #    Each entry is initially integer(0) so we can use sum_vect().
   octave_sums <- list(
@@ -822,7 +822,7 @@ process_neutral_cluster_results <- function() {
     "5000" = 0
   )
   
-  # 3) Loop over each file, load it, and accumulate the post-burn-in octaves
+  # Loop over each file, load it, and accumulate the post-burn-in octaves
   for (f in files) {
     load(f)  # should load variables: abundance_list, size, possibly others
     
@@ -842,13 +842,13 @@ process_neutral_cluster_results <- function() {
     }
   }
   
-  # 4) Compute mean octave for each size
+  # Compute mean octave for each size
   mean_octave_500  <- octave_sums[["500"]]  / max(1, count_octaves[["500"]])
   mean_octave_1000 <- octave_sums[["1000"]] / max(1, count_octaves[["1000"]])
   mean_octave_2500 <- octave_sums[["2500"]] / max(1, count_octaves[["2500"]])
   mean_octave_5000 <- octave_sums[["5000"]] / max(1, count_octaves[["5000"]])
   
-  # 5) Create a list in the order 500, 1000, 2500, 5000
+  # Create a list in the order 500, 1000, 2500, 5000
   #    These are your final mean octave distributions across runs/time.
   results_list <- list(
     mean_octave_500  = mean_octave_500,
@@ -857,7 +857,7 @@ process_neutral_cluster_results <- function() {
     mean_octave_5000 = mean_octave_5000
   )
   
-  # 6) Save this list as "processed_results.rda" (name can be changed)
+  # Save this list as "processed_results.rda" (name can be changed)
   save(results_list, file = "processed_results.rda")
   
   cat("process_neutral_cluster_results: Done.\n",
@@ -866,7 +866,7 @@ process_neutral_cluster_results <- function() {
 
 
 plot_neutral_cluster_results <- function() {
-  # 1) Load the processed results from the .rda file
+  # Load the processed results from the .rda file
   if (!file.exists("processed_results.rda")) {
     stop("File 'processed_results.rda' not found. Run process_neutral_cluster_results() first.")
   }
@@ -879,11 +879,11 @@ plot_neutral_cluster_results <- function() {
   mean_octave_2500 <- results_list$mean_octave_2500
   mean_octave_5000 <- results_list$mean_octave_5000
   
-  # 2) Set up a 2x2 panel layout for bar plots
+  # Set up a 2x2 panel layout for bar plots
   png("plot_neutral_cluster_results.png", width = 900, height = 700)
   par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
   
-  # 3) Bar charts:
+  # Bar charts:
   #    Each barplot is the mean species abundance octave distribution
   #    for that community size.
   barplot(mean_octave_500,
@@ -1009,11 +1009,6 @@ Challenge_A <- function() {
   
   return(answer)
 }
-
-# Run the function
-result_text <- Challenge_A()
-print(result_text)
-
 
 
 # Challenge question B
@@ -1230,10 +1225,8 @@ Challenge_C <- function() {
   
   #Save the plot
   ggsave("Challenge_C.png", plot = p, width = 8, height = 6)
-  
-  cat("Challenge_C complete. Plot saved to 'Challenge_C.png'\n")
 }
-
+  
 # Challenge question D
 Challenge_D <- function() {
  
