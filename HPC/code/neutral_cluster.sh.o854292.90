@@ -1,0 +1,12 @@
+R is about to run
+R has finished running
+
+============================================
+
+        Job resource usage summary 
+
+                 Memory (GB)    NCPUs
+ Requested  :         4             1
+ Used       :         0 (peak)   0.98 (ave)
+
+============================================

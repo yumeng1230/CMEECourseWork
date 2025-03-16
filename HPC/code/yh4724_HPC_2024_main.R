@@ -271,122 +271,136 @@ question_5 <- function() {
 
 # Question 6
 question_6 <- function() {
-  # If growth_matrix etc. are not defined in the environment, define defaults
+  #### 1. Ensure necessary objects exist, or define defaults ####
   if (!exists("growth_matrix")) {
     growth_matrix <- matrix(c(0.1, 0.0, 0.0, 0.0,
                               0.5, 0.4, 0.0, 0.0,
                               0.0, 0.4, 0.7, 0.0,
-                              0.0, 0.0, 0.25, 0.4), nrow = 4, byrow = TRUE)
+                              0.0, 0.0, 0.25, 0.4),
+                            nrow = 4, byrow = TRUE)
   }
   if (!exists("reproduction_matrix")) {
     reproduction_matrix <- matrix(c(0.0, 0.0, 0.0, 2.6,
                                     0.0, 0.0, 0.0, 0.0,
                                     0.0, 0.0, 0.0, 0.0,
-                                    0.0, 0.0, 0.0, 0.0), nrow = 4, byrow = TRUE)
-  }
-  if (!exists("simulation_length")) {
-    simulation_length <- 120
+                                    0.0, 0.0, 0.0, 0.0),
+                                  nrow = 4, byrow = TRUE)
   }
   if (!exists("num_stages")) {
     num_stages <- 4
   }
-  
-  # Combine growth and reproduction into the projection matrix
+  if (!exists("simulation_length")) {
+    simulation_length <- 120
+  }
   projection_matrix <- growth_matrix + reproduction_matrix
   
-  # Find simulation result files
+  #### 2. List all results files ####
   files <- list.files(pattern = "^results_\\d+\\.rda$")
   if (length(files) == 0) {
-    stop("No results files found in the working directory.")
+    stop("No results_*.rda files found in the current directory.")
   }
   
-  # Prepare lists for big_spread vs small_spread
+  #### 3. Separate “spread, big population” (jobs 51–75) and “spread, small population” (jobs ≥76) ####
   sims_big_spread <- list()
   sims_small_spread <- list()
   
-  # Read each file
   for (file in files) {
+    # Extract job number
     iter_num <- as.numeric(sub("results_(\\d+)\\.rda", "\\1", file))
-    if (iter_num < 51) next  # skip conditions 1 and 2
     
+    # Only process job numbers >= 51 (i.e., conditions 3 and 4)
+    if (iter_num < 51) next
+    
+    # Determine group
     if (iter_num >= 51 && iter_num <= 75) {
       group_label <- "big_spread"
     } else {
       group_label <- "small_spread"
     }
     
-    load(file)
+    # Load the file; it should contain 'results_list'
+    load(file)  
     if (!exists("results_list")) {
-      warning(paste("File", file, "does not contain results_list. Skipping."))
+      warning(paste("File", file, "does not contain results_list; skipping."))
       next
     }
     
-    # Collect time series into respective lists
-    for (sim in results_list) {
+    # Each element of 'results_list' is assumed to be a numeric vector time series
+    for (sim_vec in results_list) {
       if (group_label == "big_spread") {
-        sims_big_spread[[length(sims_big_spread) + 1]] <- sim
+        sims_big_spread[[length(sims_big_spread) + 1]] <- sim_vec
       } else {
-        sims_small_spread[[length(sims_small_spread) + 1]] <- sim
+        sims_small_spread[[length(sims_small_spread) + 1]] <- sim_vec
       }
     }
+    
+    # Remove results_list before next iteration
     rm(results_list)
   }
   
+  # Check we have data
   if (length(sims_big_spread) == 0 || length(sims_small_spread) == 0) {
-    stop("Not enough data for one or both 'mixed' conditions.")
+    stop("Not enough data for 'spread, big population' or 'spread, small population'.")
   }
   
-  # Compute average (mean) population trends
-  mat_big <- do.call(rbind, sims_big_spread)
-  avg_trend_big <- colMeans(mat_big)
+  #### 4. Compute average (mean) population trend for each group ####
+  mat_big <- do.call(rbind, sims_big_spread)     # combine all big_spread runs into a matrix
+  avg_trend_big <- colMeans(mat_big)             # average across simulations at each time step
   
-  mat_small <- do.call(rbind, sims_small_spread)
+  mat_small <- do.call(rbind, sims_small_spread) # combine all small_spread runs
   avg_trend_small <- colMeans(mat_small)
   
-  # Deterministic simulation
-  init_big <- state_initialise_spread(num_stages, 100)
-  init_small <- state_initialise_spread(num_stages, 10)
+  #### 5. Compute deterministic model for big spread (init=100) and small spread (init=10) ####
+  init_big <- state_initialise_spread(num_stages, initial_size = 100)
+  init_small <- state_initialise_spread(num_stages, initial_size = 10)
   
-  det_trend_big <- deterministic_simulation(init_big, projection_matrix, simulation_length)
-  det_trend_small <- deterministic_simulation(init_small, projection_matrix, simulation_length)
+  det_big <- deterministic_simulation(init_big, projection_matrix, simulation_length)
+  det_small <- deterministic_simulation(init_small, projection_matrix, simulation_length)
   
-  if (is.matrix(det_trend_big)) {
-    det_trend_big <- rowSums(det_trend_big)
+  # If returned as a matrix of stage counts, sum across stages
+  if (is.matrix(det_big)) {
+    det_big <- rowSums(det_big)
   }
-  if (is.matrix(det_trend_small)) {
-    det_trend_small <- rowSums(det_trend_small)
+  if (is.matrix(det_small)) {
+    det_small <- rowSums(det_small)
   }
   
-  # Compute deviations
-  deviation_big <- avg_trend_big / det_trend_big
-  deviation_small <- avg_trend_small / det_trend_small
+  #### 6. Compute deviation = (avg stochastic) / (deterministic) ####
+  deviation_big <- avg_trend_big / det_big
+  deviation_small <- avg_trend_small / det_small
   
-  # Create time vector
+  # Create a time vector from 0..(simulation_length)
   time_vec <- 0:(length(avg_trend_big) - 1)
   
-  # Determine axis ranges
-  x_range <- c(min(time_vec), max(time_vec))
+  #### 7. Plot both deviation curves ####
+  # Determine axis limits so everything is visible
+  x_range <- range(time_vec)
   y_range <- range(c(deviation_big, deviation_small))
   
-  # Plot
   png("question_6.png", width = 800, height = 600)
   plot(time_vec, deviation_big, type = "l", col = "blue", lwd = 2,
        xlab = "Time Step", ylab = "Deviation (Stochastic / Deterministic)",
        main = "Deviation of Stochastic Trend from Deterministic Model",
        xlim = x_range, ylim = y_range)
   lines(time_vec, deviation_small, col = "red", lwd = 2)
-  legend("topright", legend = c("Big mixed", "Small mixed"),
+  legend("topright", legend = c("Spread, big population", "Spread, small population"),
          col = c("blue", "red"), lty = 1, lwd = 2)
   dev.off()
   
-  # Decide which condition is closer to deterministic
+  #### 8. Decide which condition is closer to deterministic ####
   avg_dev_big <- mean(abs(deviation_big - 1))
   avg_dev_small <- mean(abs(deviation_small - 1))
   
   if (avg_dev_big < avg_dev_small) {
-    answer <- "For the large mixed initial condition, the average stochastic trend is closer to the deterministic model. Larger populations reduce demographic noise, leading to smaller deviations."
+    answer <- paste(
+      "The 'spread, big population' initial condition is more accurately approximated by the deterministic model,",
+      "since larger populations reduce the impact of stochastic fluctuations."
+    )
   } else {
-    answer <- "For the small mixed initial condition, the average stochastic trend is closer to the deterministic model. Despite the smaller population, these simulations ended up tracking the deterministic model more closely on average."
+    answer <- paste(
+      "The 'spread, small population' initial condition is more accurately approximated by the deterministic model,",
+      "suggesting that even smaller spread populations may track the deterministic model fairly closely on average."
+    )
   }
   
   return(answer)
@@ -514,22 +528,23 @@ neutral_step_speciation <- function(community, speciation_rate) {
 
 
 # Question 16
-neutral_generation_speciation <- function(community, speciation_rate) {
-  # Ensure speciation_rate is within a valid range
+neutral_generation_speciation <- function(community, speciation_rate, steps = 1) {
+  # Sanity check on speciation_rate
   if (speciation_rate < 0 || speciation_rate > 1) {
     stop("speciation_rate must be between 0 and 1")
   }
   
-  # One generation consists of N updates (N is the community size)
-  N <- length(community)
-  
-  # Perform N neutral steps, each with speciation
-  for (i in 1:N) {
-    community <- neutral_step_speciation(community, speciation_rate)
+  # Repeat "steps" times
+  for (g in seq_len(steps)) {
+    # 1 generation = N birth-death events
+    N <- length(community)
+    for (i in seq_len(N)) {
+      community <- neutral_step_speciation(community, speciation_rate)
+    }
   }
-  
   return(community)
 }
+
 
 
 # Question 17
@@ -784,22 +799,125 @@ neutral_cluster_run <- function(speciation_rate, size, wall_time, interval_rich,
 
 # Question 26 
 process_neutral_cluster_results <- function() {
+  # 1) Identify and read all results files
+  files <- list.files(pattern = "^neutral_cluster_output_\\d+\\.rda$")
+  if (length(files) == 0) {
+    stop("No '^neutral_cluster_output_\\d+\\.rda$' files found in the current directory.")
+  }
   
-  combined_results <- list() # Create a list output to return
-  # Save results to an .rda file (to be implemented)
+  # 2) Prepare data structures to accumulate sums of octave vectors
+  #    We'll track four community sizes: 500, 1000, 2500, 5000
+  #    Each entry is initially integer(0) so we can use sum_vect().
+  octave_sums <- list(
+    "500"  = integer(0),
+    "1000" = integer(0),
+    "2500" = integer(0),
+    "5000" = integer(0)
+  )
+  # We'll also track how many total octaves we accumulate for each size
+  count_octaves <- list(
+    "500"  = 0,
+    "1000" = 0,
+    "2500" = 0,
+    "5000" = 0
+  )
   
+  # 3) Loop over each file, load it, and accumulate the post-burn-in octaves
+  for (f in files) {
+    load(f)  # should load variables: abundance_list, size, possibly others
+    
+    # 'size' must match one of the known keys
+    size_char <- as.character(size)  
+    if (!size_char %in% c("500", "1000", "2500", "5000")) {
+      warning(paste("File", f, "has unexpected size:", size_char))
+      next
+    }
+    
+    # 'abundance_list' is assumed to be a list of octave vectors
+    # recorded after burn-in. We'll sum them all up.
+    for (octv in abundance_list) {
+      # sum_vect() adds two vectors, padding the shorter with zeros
+      octave_sums[[size_char]] <- sum_vect(octave_sums[[size_char]], octv)
+      count_octaves[[size_char]] <- count_octaves[[size_char]] + 1
+    }
+  }
+  
+  # 4) Compute mean octave for each size
+  mean_octave_500  <- octave_sums[["500"]]  / max(1, count_octaves[["500"]])
+  mean_octave_1000 <- octave_sums[["1000"]] / max(1, count_octaves[["1000"]])
+  mean_octave_2500 <- octave_sums[["2500"]] / max(1, count_octaves[["2500"]])
+  mean_octave_5000 <- octave_sums[["5000"]] / max(1, count_octaves[["5000"]])
+  
+  # 5) Create a list in the order 500, 1000, 2500, 5000
+  #    These are your final mean octave distributions across runs/time.
+  results_list <- list(
+    mean_octave_500  = mean_octave_500,
+    mean_octave_1000 = mean_octave_1000,
+    mean_octave_2500 = mean_octave_2500,
+    mean_octave_5000 = mean_octave_5000
+  )
+  
+  # 6) Save this list as "processed_results.rda" (name can be changed)
+  save(results_list, file = "processed_results.rda")
+  
+  cat("process_neutral_cluster_results: Done.\n",
+      "Summarized octaves saved in 'processed_results.rda'.\n")
 }
 
+
 plot_neutral_cluster_results <- function() {
-  # Load combined_results from the .rda file
+  # 1) Load the processed results from the .rda file
+  if (!file.exists("processed_results.rda")) {
+    stop("File 'processed_results.rda' not found. Run process_neutral_cluster_results() first.")
+  }
   
-  png(filename="plot_neutral_cluster_results.png", width = 600, height = 400)
-  # Plot the results here
-  Sys.sleep(0.1)
+  load("processed_results.rda")  # loads 'results_list'
+  
+  # results_list is expected to have 4 mean octave vectors in ascending size order
+  mean_octave_500  <- results_list$mean_octave_500
+  mean_octave_1000 <- results_list$mean_octave_1000
+  mean_octave_2500 <- results_list$mean_octave_2500
+  mean_octave_5000 <- results_list$mean_octave_5000
+  
+  # 2) Set up a 2x2 panel layout for bar plots
+  png("plot_neutral_cluster_results.png", width = 900, height = 700)
+  par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+  
+  # 3) Bar charts:
+  #    Each barplot is the mean species abundance octave distribution
+  #    for that community size.
+  barplot(mean_octave_500,
+          main = "Mean Octave Dist (Size=500)",
+          xlab = "Octave Class",
+          ylab = "Mean # of Species",
+          col = "skyblue")
+  
+  barplot(mean_octave_1000,
+          main = "Mean Octave Dist (Size=1000)",
+          xlab = "Octave Class",
+          ylab = "Mean # of Species",
+          col = "lightgreen")
+  
+  barplot(mean_octave_2500,
+          main = "Mean Octave Dist (Size=2500)",
+          xlab = "Octave Class",
+          ylab = "Mean # of Species",
+          col = "lightpink")
+  
+  barplot(mean_octave_5000,
+          main = "Mean Octave Dist (Size=5000)",
+          xlab = "Octave Class",
+          ylab = "Mean # of Species",
+          col = "wheat")
+  
   dev.off()
   
-  return(combined_results)
+  # Optionally return or print the data so the user can see them
+  print(results_list)
+  
+  return(results_list)
 }
+
 
 # Challenge questions - these are substantially harder and worth fewer marks.
 # Attempt them only if you've completed all the main questions.
@@ -900,22 +1018,270 @@ print(result_text)
 
 # Challenge question B
 Challenge_B <- function() {
+  # ---------------------
+  # 1. Define Parameters
+  # ---------------------
+  speciation_rate   <- 0.1
+  community_size    <- 100
+  burn_in           <- 200   # Burn-in generations
+  duration          <- 2000  # Main simulation after burn-in
+  sampling_interval <- 20    # Record richness every 20 generations
+  num_time_points   <- duration / sampling_interval  # e.g. 2000/20 = 100
+  time_points       <- seq(sampling_interval, duration, sampling_interval)
   
-  png(filename="Challenge_B.png", width = 600, height = 400)
-  # Plot your graph here
-  Sys.sleep(0.1)
+  # Number of repeat simulations
+  num_repeats <- 30
+  
+  # ---------------------
+  # 2. Create Storage
+  #    We'll collect species richness from repeated sims.
+  #    For each condition, we get a matrix with dimension:
+  #        rows = time points, columns = repeated runs
+  # ---------------------
+  richness_min_mat <- matrix(0, nrow = num_time_points, ncol = num_repeats)
+  richness_max_mat <- matrix(0, nrow = num_time_points, ncol = num_repeats)
+  
+  # ---------------------
+  # 3. Run Simulations
+  #    For each repeat:
+  #      (A) Start min condition => rep(1, community_size)
+  #          Burn-in => 200 gens
+  #          Then 2000 gens, recording every 20
+  #
+  #      (B) Start max condition => seq(1, community_size)
+  #          Same procedure.
+  # ---------------------
+  
+  for (rep_idx in seq_len(num_repeats)) {
+    
+    # (A) Min initial richness
+    comm_min <- rep(1, community_size)
+    # Burn-in
+    comm_min <- neutral_generation_speciation(comm_min, speciation_rate, burn_in)
+    
+    # Now record every 20 gens for 2000 gens
+    for (t_idx in seq_len(num_time_points)) {
+      # 20 generations
+      comm_min <- neutral_generation_speciation(comm_min, speciation_rate, sampling_interval)
+      # Record species richness
+      richness_min_mat[t_idx, rep_idx] <- length(unique(comm_min))
+    }
+    
+    # (B) Max initial richness
+    comm_max <- seq(1, community_size)
+    # Burn-in
+    comm_max <- neutral_generation_speciation(comm_max, speciation_rate, burn_in)
+    
+    # Now record every 20 gens for 2000 gens
+    for (t_idx in seq_len(num_time_points)) {
+      # 20 generations
+      comm_max <- neutral_generation_speciation(comm_max, speciation_rate, sampling_interval)
+      # Record species richness
+      richness_max_mat[t_idx, rep_idx] <- length(unique(comm_max))
+    }
+  }
+  
+  # ---------------------
+  # 4. Compute Means and 97.2% CI
+  #    Normal approximation: mean ± z * (SD / sqrt(n))
+  #    z for 97.2% ~ qnorm(0.986) ≈ 2.41–2.45
+  # ---------------------
+  
+  mean_richness_min <- rowMeans(richness_min_mat)
+  mean_richness_max <- rowMeans(richness_max_mat)
+  
+  sd_richness_min <- apply(richness_min_mat, 1, sd)
+  sd_richness_max <- apply(richness_max_mat, 1, sd)
+  
+  se_richness_min <- sd_richness_min / sqrt(num_repeats)
+  se_richness_max <- sd_richness_max / sqrt(num_repeats)
+  
+  z <- qnorm(0.986)  # upper tail for 97.2% CI
+  
+  ci_lower_min <- mean_richness_min - z * se_richness_min
+  ci_upper_min <- mean_richness_min + z * se_richness_min
+  
+  ci_lower_max <- mean_richness_max - z * se_richness_max
+  ci_upper_max <- mean_richness_max + z * se_richness_max
+  
+  # ---------------------
+  # 5. Plot and Save
+  #    We'll overlay two lines (min vs. max),
+  #    with shaded polygons for CI.
+  # ---------------------
+  
+  png("Challenge_B.png", width = 800, height = 500)
+  par(mar = c(5, 5, 4, 2))
+  
+  # Set up an empty plot
+  x_min <- min(time_points)
+  x_max <- max(time_points)
+  y_min <- min(ci_lower_min, ci_lower_max)
+  y_max <- max(ci_upper_min, ci_upper_max)
+  
+  plot(NA, NA, xlim = c(x_min, x_max), ylim = c(y_min, y_max),
+       xlab = "Generations (Post Burn-In)", ylab = "Mean Species Richness",
+       main = "Challenge_B: Mean Species Richness vs. Time (97.2% CI)")
+  
+  # Polygon for min-init
+  polygon(
+    x = c(time_points, rev(time_points)),
+    y = c(ci_lower_min, rev(ci_upper_min)),
+    col = rgb(1, 0, 0, 0.2),
+    border = NA
+  )
+  lines(time_points, mean_richness_min, col = "red", lwd = 2)
+  
+  # Polygon for max-init
+  polygon(
+    x = c(time_points, rev(time_points)),
+    y = c(ci_lower_max, rev(ci_upper_max)),
+    col = rgb(0, 0, 1, 0.2),
+    border = NA
+  )
+  lines(time_points, mean_richness_max, col = "blue", lwd = 2)
+  
+  legend("bottomright",
+         legend = c("Min Initial Richness", "Max Initial Richness"),
+         col = c("red", "blue"),
+         lwd = 2, bty = "n")
+  
   dev.off()
   
+  # ---------------------
+  # 6. Estimate Generations to Dynamic Equilibrium
+  #    Simple approach: We say the system is in equilibrium if
+  #    for 5 consecutive time points, the mean richness is within ±1
+  #    of the final mean (the one at the last time point).
+  # ---------------------
+  
+  final_min <- mean_richness_min[length(mean_richness_min)]
+  final_max <- mean_richness_max[length(mean_richness_max)]
+  
+  threshold <- 1
+  consecutive_needed <- 5
+  
+  # Helper function
+  find_equilibrium_time <- function(mean_vector, final_value) {
+    # Build a logical vector: is each time point within ±1 of final_value?
+    within_threshold <- abs(mean_vector - final_value) <= threshold
+    
+    # We look for the earliest index from which we have
+    # 'consecutive_needed' consecutive TRUEs
+    for (start_i in 1:(length(within_threshold) - consecutive_needed + 1)) {
+      if (all(within_threshold[start_i:(start_i + consecutive_needed - 1)])) {
+        # Return the generation (the x-axis value in time_points)
+        return(time_points[start_i])
+      }
+    }
+    # If never found, return the last time point
+    return(time_points[length(time_points)])
+  }
+  
+  eq_time_min <- find_equilibrium_time(mean_richness_min, final_min)
+  eq_time_max <- find_equilibrium_time(mean_richness_max, final_max)
+  
+  # We'll say overall eq time is the later of the two
+  eq_time_est <- max(eq_time_min, eq_time_max)
+  
+  # ---------------------
+  # 7. Return a Full Sentence
+  # ---------------------
+  out_text <- paste(
+    "Based on these repeated simulations, using ±1 species for 5 consecutive samples",
+    "as our criterion for dynamic equilibrium, the system reaches equilibrium after about",
+    round(eq_time_est),
+    "generations (post burn-in)."
+  )
+  
+  return(out_text)
 }
 
 # Challenge question C
 Challenge_C <- function() {
+  # -----------------------------
+  # 1) Define parameters locally
+  # -----------------------------
+  speciation_rate   <- 0.1
+  community_size    <- 100
+  duration          <- 2000        # Total number of generations
+  sampling_interval <- 20          # We'll record richness every 20 gens
+  num_repeats       <- 10          # How many independent simulations for each initial richness
+  init_range        <- seq(5, 100, by=5)  # Different starting species richness levels
   
-  png(filename="Challenge_C.png", width = 600, height = 400)
-  # Plot your graph here
-  Sys.sleep(0.1)
-  dev.off()
+  # The times at which we record species richness:
+  # e.g., time_points = 0, 20, 40, ..., 2000
+  time_points <- seq(0, duration, by = sampling_interval)
+  num_points  <- length(time_points)
   
+  # We'll build up a data frame to store everything for plotting
+  library(ggplot2)
+  plot_data <- data.frame()
+  
+  # ------------------------------------------------------
+  # 2) Loop over each initial richness in init_range
+  # ------------------------------------------------------
+  for (init_rich in init_range) {
+    
+    # We'll store the time series in a matrix: rows = time points, cols = repeats
+    # each column is one replicate
+    richness_matrix <- matrix(0, nrow = num_points, ncol = num_repeats)
+    
+    # -- Repeat the simulation multiple times
+    for (rep_idx in seq_len(num_repeats)) {
+      
+      # 2A) Create the initial community with 'init_rich' distinct species
+      # each of the 100 individuals is randomly assigned one of init_rich species
+      community <- sample.int(n = init_rich, size = community_size, replace = TRUE)
+      
+      # 2B) Record richness at time 0
+      richness_matrix[1, rep_idx] <- length(unique(community))
+      
+      # 2C) Run the simulation up to 'duration' generations
+      #     and record every 'sampling_interval' generations
+      for (gen in 1:duration) {
+        # Perform ONE generation = community_size birth-death events
+        community <- neutral_generation_speciation(community, speciation_rate)
+        
+        # If gen is a multiple of sampling_interval, record species richness
+        if ((gen %% sampling_interval) == 0) {
+          # figure out which row index that corresponds to
+          # e.g., if gen=20, that's time_points[2], so row=2, etc.
+          row_idx <- (gen / sampling_interval) + 1  # +1 because row 1 = time=0
+          richness_matrix[row_idx, rep_idx] <- length(unique(community))
+        }
+      }
+    }
+    
+    # 2D) Average across repeats at each time point
+    avg_richness <- rowMeans(richness_matrix)
+    
+    # 2E) Combine into a temporary data frame for plotting
+    df_temp <- data.frame(
+      Generation = time_points,
+      AvgRichness = avg_richness,
+      InitialRichness = factor(init_rich, levels = init_range)
+    )
+    
+    # Add to the master 'plot_data'
+    plot_data <- rbind(plot_data, df_temp)
+  } # end of init_range loop
+  
+  # -----------------------------
+  # 3) Plot all lines in ggplot
+  # -----------------------------
+  p <- ggplot(plot_data, aes(x = Generation, y = AvgRichness, color = InitialRichness)) +
+    geom_line(size = 1) +
+    labs(title = "Challenge_C: Mean Richness vs. Time for Different Initial Richnesses",
+         x = "Generation",
+         y = "Mean Species Richness",
+         color = "Initial\nRichness") +
+    theme_minimal()
+  
+  # Save the plot
+  ggsave("Challenge_C.png", plot = p, width = 8, height = 6)
+  
+  cat("Challenge_C complete. Plot saved to 'Challenge_C.png'\n")
 }
 
 # Challenge question D
