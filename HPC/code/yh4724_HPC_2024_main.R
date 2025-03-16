@@ -157,222 +157,122 @@ question_2 <- function(){
 
 # Question 5
 question_5 <- function() {
-  library(ggplot2)
+  # 1. Identify all results files in the current directory
+  files <- list.files(pattern = "^results_\\d+\\.rda$")
+  if (length(files) == 0) {
+    stop("No 'results_*.rda' files found in the current working directory.")
+  }
   
-  # Define the four initial condition categories
-  init_conditions <- c("big_adult", "small_adult", "big_spread", "small_spread")
+  # 2. Define the four initial conditions and track their extinction counts
+  #    We'll store them in a data frame for convenience
+  group_labels <- c(
+    "adults, large population",
+    "adults, small population",
+    "spread, large population",
+    "spread, small population"
+  )
+  results_df <- data.frame(
+    group   = group_labels,
+    extinct = c(0, 0, 0, 0),
+    total   = c(0, 0, 0, 0),
+    stringsAsFactors = FALSE
+  )
   
-  # Initialize extinction counters for each category
-  extinction_counts <- setNames(rep(0, length(init_conditions)), init_conditions)
-  total_counts <- setNames(rep(0, length(init_conditions)), init_conditions)
-  
-  # Define the directory containing the .rda files
-  rda_folder <- "../results"
-  
-  #  Loop through 100 simulation result files
-  for (iter in 1:100) {
-    file_name <- paste0(rda_folder, "/demographic_cluster_", iter, ".rda")
-    
-    # Check if the file exists before attempting to load it
-    if (file.exists(file_name)) {
-      load(file_name)  # Load the .rda file (should contain `simulation_results`)
-      
-      # Ensure `simulation_results` exists to prevent errors
-      if (!exists("simulation_results")) next
-      
-      # Correctly map `initial_condition` based on `iter` value
-      condition <- ifelse(iter < 26, "big_adult",
-                          ifelse(iter < 51, "small_adult",
-                                 ifelse(iter < 76, "big_spread", "small_spread")))
-      
-      # Debugging: Check if condition assignment is correct
-      print(paste("iter:", iter, "-> condition:", condition))
-      
-      # Count total simulations for this condition
-      total_counts[condition] <- total_counts[condition] + length(simulation_results)
-      
-      # Count extinctions (final population size == 0)
-      extinction_counts[condition] <- extinction_counts[condition] + sum(sapply(simulation_results, function(sim) {
-        if (is.numeric(sim)) return(tail(sim, 1) == 0) else return(NA)
-      }), na.rm = TRUE)  # Ignore NA values
+  # 3. Function to map job number to initial condition label
+  map_job_to_label <- function(job_num) {
+    if (job_num >= 1 && job_num <= 25) {
+      return("adults, large population")
+    } else if (job_num >= 26 && job_num <= 50) {
+      return("adults, small population")
+    } else if (job_num >= 51 && job_num <= 75) {
+      return("spread, large population")
+    } else {
+      return("spread, small population")
     }
   }
   
-  #  Compute extinction proportions (avoid division by zero)
-  extinction_proportions <- extinction_counts / ifelse(total_counts == 0, 1, total_counts)
+  # 4. Read each file, load 'results_list', and count extinctions
+  for (file in files) {
+    # Extract the job number from the file name
+    job_str <- sub("results_(\\d+)\\.rda", "\\1", file)
+    job_num <- as.numeric(job_str)
+    
+    # Determine which group label this file corresponds to
+    group_label <- map_job_to_label(job_num)
+    
+    # Load the file, which should contain 'results_list'
+    load(file)  # After this, 'results_list' is in the environment
+    if (!exists("results_list")) {
+      warning(paste("File", file, "does not contain 'results_list'. Skipping."))
+      next
+    }
+    
+    # Count how many simulations are extinct
+    # We assume each element 'sim' is a numeric vector where the last value is final population
+    extinct_count <- 0
+    total_count   <- length(results_list)
+    for (sim in results_list) {
+      if (tail(sim, 1) == 0) {
+        extinct_count <- extinct_count + 1
+      }
+    }
+    
+    # Update our data frame with these counts
+    idx <- which(results_df$group == group_label)
+    results_df$extinct[idx] <- results_df$extinct[idx] + extinct_count
+    results_df$total[idx]   <- results_df$total[idx]   + total_count
+    
+    # Remove 'results_list' to avoid conflicts on next iteration
+    rm(results_list)
+  }
   
-  # Fix `initial_condition` to ensure correct classification
-  df <- data.frame(
-    Initial_Condition = factor(names(extinction_proportions), levels = init_conditions),  # Ensures correct order
-    Extinction_Probability = extinction_proportions
+  # 5. Compute extinction proportions
+  results_df$proportion <- results_df$extinct / results_df$total
+  
+  # 6. Plot the bar chart and save as 'question_5.png'
+  png("question_5.png", width = 800, height = 600)
+  
+  # Capture bar positions so we can label them
+  bar_positions <- barplot(
+    height      = results_df$proportion,
+    names.arg   = results_df$group,
+    xlab        = "Initial Condition",
+    ylab        = "Proportion of Simulations Extinct",
+    main        = "Proportion of Simulations Resulting in Extinction",
+    ylim        = c(0, 1),
+    col         = c("blue", "green", "orange", "purple")
   )
   
-  # Open PNG device for saving the plot
-  png("../results/question_5.png", width = 600, height = 400, units = "px", bg = "white")
+  # Optionally, place numeric labels above each bar
+  text(
+    x      = bar_positions,
+    y      = results_df$proportion,
+    labels = round(results_df$proportion, 2),
+    pos    = 3,      # above the bars
+    cex    = 1
+  )
   
-  # nsure X-axis labels display correctly
-  extinction_plot <- ggplot(df, aes(x = Initial_Condition, y = Extinction_Probability, fill = Initial_Condition)) +
-    geom_bar(stat = "identity", color = "black") +
-    theme_minimal(base_size = 14) +
-    labs(title = "Extinction Probability by Initial Condition",
-         x = "Initial Condition",
-         y = "Proportion of Simulations Resulting in Extinction") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1),
-          panel.background = element_rect(fill = "white", colour = NA),
-          plot.background = element_rect(fill = "white", colour = NA),
-          panel.grid.major = element_line(colour = "gray90"),
-          panel.grid.minor = element_line(colour = "gray95"))
+  dev.off()
   
-  # Save the plot to file
-  print(extinction_plot)
-  dev.off()  # Close the PNG device
+  # 7. Identify which group has the highest extinction proportion
+  max_idx   <- which.max(results_df$proportion)
+  max_group <- results_df$group[max_idx]
   
-  # Identify the population with the highest extinction probability
-  most_extinct <- names(which.max(extinction_proportions))
-  
-  #  Return an explanation
-  explanation <- sprintf(
-    "The most extinction-prone population was %s. This outcome is expected, as smaller populations are more vulnerable to stochastic fluctuations. 
-    In contrast, larger or well-distributed populations tend to be more stable due to the buffering effects provided by greater numbers of individuals and life stages.",
-    most_extinct
-  ) 
-  
-
+  # 8. Return a plain text answer
+  explanation <- paste(
+    "Which population was most likely to go extinct?\n",
+    "The highest extinction proportion was for '", max_group, 
+    "' with a proportion of ", round(results_df$proportion[max_idx], 2), ".\n",
+    "Explanation: smaller populations are generally more vulnerable to stochastic events, ",
+    "while spread (mixed) populations may have lower local densities, increasing extinction risk.\n",
+    sep = ""
+  )
   
   return(explanation)
 }
 
 # Question 6
-question_6 <- function() {
-  # Set simulation parameters (should match those used in the stochastic runs)
-  simulation_length <- 120  # simulation length (e.g., 120 time steps)
-  num_stages <- 4           # number of life stages
-  
-  # Define the projection matrices (as in the HPC simulation code)
-  growth_matrix <- matrix(c(0.1, 0.0, 0.0, 0.0,
-                            0.5, 0.4, 0.0, 0.0,
-                            0.0, 0.4, 0.7, 0.0,
-                            0.0, 0.0, 0.2, 0.4), nrow = 4, byrow = TRUE)
-  
-  reproduction_matrix <- matrix(c(0.0, 0.0, 0.0, 2.6,
-                                  0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0,
-                                  0.0, 0.0, 0.0, 0.0), nrow = 4, byrow = TRUE)
-  # Projection matrix for the deterministic model:
-  A <- growth_matrix + reproduction_matrix
-  
-  # Get all simulation result files (results_*.rda)
-  files <- list.files(pattern = "^results_\\d+\\.rda$")
-  if(length(files) == 0) {
-    stop("No results files found in the current directory.")
-  }
-  
-  # Separate files into groups corresponding to initial conditions 3 and 4.
-  # In our HPC simulation code:
-  # - Iterations 51-75 used state_initialise_spread(num_stages, 100) [big mixed]
-  # - Iterations 76 and above used state_initialise_spread(num_stages, 10) [small mixed]
-  files_group3 <- c()  # big mixed
-  files_group4 <- c()  # small mixed
-  
-  for (file in files) {
-    iter_str <- sub("results_(\\d+)\\.rda", "\\1", file)
-    iter_num <- as.numeric(iter_str)
-    if(iter_num >= 51 && iter_num <= 75) {
-      files_group3 <- c(files_group3, file)
-    } else if(iter_num >= 76) {
-      files_group4 <- c(files_group4, file)
-    }
-  }
-  
-  if(length(files_group3) == 0 || length(files_group4) == 0) {
-    stop("Not enough results files for initial conditions 3 and/or 4.")
-  }
-  
-  # Helper function to compute the average (mean) population trend
-  # from a list of simulation files.
-  compute_avg_trend <- function(file_list) {
-    sim_matrix <- NULL
-    for (file in file_list) {
-      load(file)  # This should load a variable named 'results_list'
-      if (!exists("results_list")) {
-        warning(paste("File", file, "does not contain results_list."))
-        next
-      }
-      for (sim in results_list) {
-        # Each 'sim' is assumed to be a numeric vector representing the total population at each time step.
-        sim_matrix <- rbind(sim_matrix, sim)
-      }
-    }
-    # Compute the mean for each time step (i.e., column means)
-    avg_trend <- colMeans(sim_matrix)
-    return(avg_trend)
-  }
-  
-  # Compute the average stochastic population trend for each group:
-  stoch_trend_3 <- compute_avg_trend(files_group3)  # big mixed
-  stoch_trend_4 <- compute_avg_trend(files_group4)  # small mixed
-  
-  # Compute the deterministic population time series for each initial condition:
-  # For group 3 ("big mixed"), use state_initialise_spread with a large initial population (e.g., 100)
-  init_3 <- state_initialise_spread(num_stages, 100)
-  det_trend_3 <- deterministic_simulation(init_3, A, simulation_length)
-  # For group 4 ("small mixed"), use state_initialise_spread with a small initial population (e.g., 10)
-  init_4 <- state_initialise_spread(num_stages, 10)
-  det_trend_4 <- deterministic_simulation(init_4, A, simulation_length)
-  
-  # If the deterministic_simulation returns a matrix with stages, sum across stages to get total population size.
-  if(is.matrix(det_trend_3)) {
-    det_trend_3 <- rowSums(det_trend_3)
-  }
-  if(is.matrix(det_trend_4)) {
-    det_trend_4 <- rowSums(det_trend_4)
-  }
-  
-  # Compute the deviation at each time step:
-  # deviation = (stochastic average population) / (deterministic population)
-  deviation_3 <- stoch_trend_3 / det_trend_3
-  deviation_4 <- stoch_trend_4 / det_trend_4
-  
-  # Create a time vector. (Often it's length = simulation_length + 1 if we include time step 0.)
-  time_vec <- seq_along(stoch_trend_3)
-  
-  # Prepare to plot, and adjust margins if desired
-  png("question_6.png", width = 800, height = 600)
-  par(mar = c(5, 5, 4, 2) + 0.1)  # increases left margin for y-axis label, etc.
-  
-  # Determine x and y axis ranges so the entire data set is visible
-  x_range <- c(1, length(time_vec))
-  y_range <- range(c(deviation_3, deviation_4))
-  
-  # Plot the first deviation curve
-  plot(time_vec, deviation_3, type = "l", col = "blue", lwd = 2,
-       xlab = "Time Step", ylab = "Deviation (Stochastic / Deterministic)",
-       main = "Deviation of Average Stochastic Trend from Deterministic Model",
-       xlim = x_range, ylim = y_range)
-  
-  # Add the second deviation curve
-  lines(time_vec, deviation_4, col = "red", lwd = 2)
-  
-  # Add a legend
-  legend("topright",
-         legend = c("Spread, big population", "Spread, small population"),
-         col = c("blue", "red"), lty = 1, lwd = 2)
-  
-  dev.off()
-  
-  # Determine which initial condition is better approximated by the deterministic model.
-  # A deviation closer to 1 indicates better agreement.
-  avg_dev_3 <- mean(abs(deviation_3 - 1))
-  avg_dev_4 <- mean(abs(deviation_4 - 1))
-  
-  if(avg_dev_3 < avg_dev_4) {
-    answer <- "For the 'Spread, big population' initial condition, the average stochastic trend is closer to the deterministic model (deviations closer to 1). Larger populations average out random fluctuations, making the deterministic approximation more accurate."
-  } else {
-    answer <- "For the 'Spread, small population' initial condition, the average stochastic trend is closer to the deterministic model (deviations closer to 1). This implies that, in this particular case, even a small spread population tracks the deterministic model fairly well on average."
-  }
-  
-  return(answer)
-}
+
 
 # Question 7
 species_richness <- function(community) {
@@ -637,130 +537,128 @@ question_22 <- function() {
   sampling_interval <- 20
   num_samples <- duration / sampling_interval  # Number of sampling points
   
-  # Initialize two communities:
-  # Maximum initial richness: each individual is a unique species.
-  # Minimum initial richness: all individuals belong to the same species.
-  init_comm_max <- seq(1, community_size)
-  init_comm_min <- rep(1, community_size)
+  # Initialize two different communities
+  init_community_max <- seq(1, community_size)  # Each individual is a different species
+  init_community_min <- rep(1, community_size)  # All individuals belong to the same species
   
-  # Helper function: run n generations of the neutral model with speciation.
-  run_generations <- function(community, speciation_rate, n_gens) {
-    for (i in 1:n_gens) {
-      community <- neutral_generation_speciation(community, speciation_rate)
-    }
-    return(community)
-  }
+  # Burn-in phase
+  community_max <- neutral_generation_speciation(init_community_max, speciation_rate, burn_in)
+  community_min <- neutral_generation_speciation(init_community_min, speciation_rate, burn_in)
   
-  # Burn-in phase: run each community for 200 generations.
-  community_max <- run_generations(init_comm_max, speciation_rate, burn_in)
-  community_min <- run_generations(init_comm_min, speciation_rate, burn_in)
+  # Store octave distributions
+  octaves_max <- list()
+  octaves_min <- list()
   
-  # Lists to store octave vectors recorded during the sampling phase.
-  octave_list_max <- list()
-  octave_list_min <- list()
-  
-  # Continue simulation for 2000 generations, recording every 20 generations.
+  # Continue simulation for 2000 generations, sampling every 20 generations
   for (i in 1:num_samples) {
-    community_max <- run_generations(community_max, speciation_rate, sampling_interval)
-    community_min <- run_generations(community_min, speciation_rate, sampling_interval)
+    # Run 20 generations
+    community_max <- neutral_generation_speciation(community_max, speciation_rate, sampling_interval)
+    community_min <- neutral_generation_speciation(community_min, speciation_rate, sampling_interval)
     
-    # Record the species abundance octave vector.
-    octave_list_max[[i]] <- octaves(species_abundance(community_max))
-    octave_list_min[[i]] <- octaves(species_abundance(community_min))
+    # Compute octave class distribution
+    octaves_max[[i]] <- octaves(species_abundance(community_max))
+    octaves_min[[i]] <- octaves(species_abundance(community_min))
   }
   
-  # Compute mean species abundance in octave classes by averaging each bar.
-  mean_octaves_max <- Reduce(sum_vect, octave_list_max) / num_samples
-  mean_octaves_min <- Reduce(sum_vect, octave_list_min) / num_samples
+  # Compute mean species abundance in octave classes
+  mean_octaves_max <- Reduce(sum_vect, octaves_max) / num_samples
+  mean_octaves_min <- Reduce(sum_vect, octaves_min) / num_samples
   
-  # Create and save a bar plot with two panels.
-  png(filename = "question_22.png", width = 800, height = 400)
-  par(mfrow = c(1, 2))  # Two side-by-side panels
+  # Generate and save bar plot
+  png(filename = "question_22.png", width = 600, height = 400)
+  par(mfrow = c(1, 2))  # Two subplots
   
-  # Set y-axis limit as the maximum across both mean octave vectors.
-  y_max <- max(mean_octaves_max, mean_octaves_min)
+  barplot(mean_octaves_max, col = "blue", xlab = "Octave Class", ylab = "Mean Species Count",
+          main = "Max Initial Richness", ylim = c(0, max(mean_octaves_max, mean_octaves_min)))
   
-  barplot(mean_octaves_max, col = "blue",
-          xlab = "Octave Class", ylab = "Mean Species Count",
-          main = "Max Initial Richness", ylim = c(0, y_max))
+  barplot(mean_octaves_min, col = "red", xlab = "Octave Class", ylab = "Mean Species Count",
+          main = "Min Initial Richness", ylim = c(0, max(mean_octaves_max, mean_octaves_min)))
   
-  barplot(mean_octaves_min, col = "red",
-          xlab = "Octave Class", ylab = "Mean Species Count",
-          main = "Min Initial Richness", ylim = c(0, y_max))
-  
+  Sys.sleep(0.1) 
   dev.off()
   
-  # Return the plain text answer.
-  answer <- "The initial condition of the system does not matter in the long run. Both high and low initial species richness converge to similar species abundance distributions. This is because the neutral model assumes that all species have equal ecological fitness, so over many generations, stochastic birth, death, and speciation processes drive the system toward a steady state that is independent of the starting condition."
-  
-  return(answer)
+  # Return written explanation
+  return("The initial condition of the system does not matter in the long run. 
+  Both initial conditions converge to similar species abundance distributions after enough generations. 
+  This is because the neutral model assumes that all species have the same ecological fitness. 
+  As a result, the system gradually reaches a steady state where species abundance is determined primarily by stochastic birth, death, and speciation processes, rather than by the initial species richness.")
 }
 
-
 # Question 23
-neutral_cluster_run <- function(
-    speciation_rate,
-    size,
-    wall_time,               # running time in minutes
-    interval_rich,
-    interval_oct,
-    burn_in_generations,
-    output_file_name
-) {
-  # Record the start time in seconds
+neutral_cluster_run <- function(speciation_rate, size, wall_time, interval_rich, 
+                                
+                                interval_oct, burn_in_generations, output_file_name) {
+  
+  # Start the timer
+  
   start_time <- proc.time()[3]
   
-  # Initialize the community with minimal diversity:
-  # all individuals belong to a single species.
+  # Initialize the community with minimal diversity (all individuals belong to one species)
+  
   community <- rep(1, size)
   
-  # Vector to store species richness during the burn-in period.
+  # Initialize data structures to store simulation results
+  
   time_series <- c()
   
-  # List to store octave distributions at specified intervals.
   abundance_list <- list()
   
-  # Generation counter
+  # Initialize generation counter
+  
   generation <- 0
   
-  # Main simulation loop: run until the elapsed time reaches wall_time minutes.
-  while ((proc.time()[3] - start_time) < (wall_time * 60)) {
-    # Advance one generation in the neutral model with speciation.
-    community <- neutral_generation_speciation(community, speciation_rate)
+  # Run the simulation until the allotted wall time is exceeded
+  
+  repeat {
+    
+    # Update generation counter
+    
     generation <- generation + 1
     
-    # During the burn-in phase, record species richness at the given interval.
-    if (generation <= burn_in_generations && (generation %% interval_rich == 0)) {
-      rich_value <- species_richness(community)
-      time_series <- c(time_series, rich_value)
+    # Perform one generation step with speciation
+    
+    community <- neutral_generation_speciation(community, speciation_rate)
+    
+    # Record species richness during burn-in phase
+    
+    if (generation <= burn_in_generations && generation %% interval_rich == 0) {
+      
+      time_series <- c(time_series, species_richness(community))
+      
     }
     
-    # Record the octave distribution every interval_oct generations.
-    if (generation %% interval_oct == 0) {
-      abund <- species_abundance(community)
-      abund_oct <- octaves(abund)
-      abundance_list[[length(abundance_list) + 1]] <- abund_oct
+    # Record species abundance as octaves after burn-in phase
+    
+    if (generation > burn_in_generations && generation %% interval_oct == 0) {
+      
+      abundance_list[[length(abundance_list) + 1]] <- octaves(species_abundance(community))
+      
     }
+    
+    # Check elapsed time
+    
+    elapsed_time <- proc.time()[3] - start_time
+    
+    if (elapsed_time > wall_time * 60) {
+      
+      break
+      
+    }
+    
   }
   
-  # Calculate total simulation time (in seconds).
+  # Save results
+  
   total_time <- proc.time()[3] - start_time
   
-  # Save all output objects to the specified RDA file.
-  save(
-    time_series,
-    abundance_list,
-    community,
-    total_time,
-    speciation_rate,
-    size,
-    wall_time,
-    interval_rich,
-    interval_oct,
-    burn_in_generations,
-    generation,
-    file = output_file_name
-  )
+  save(time_series, abundance_list, community, total_time, generation,
+       
+       speciation_rate, size, wall_time, interval_rich, 
+       
+       interval_oct, burn_in_generations, 
+       
+       file = output_file_name)
+  
 }
 
 # Questions 24 and 25 involve writing code elsewhere to run simulations on the cluster
@@ -789,93 +687,13 @@ plot_neutral_cluster_results <- function() {
 
 # Challenge question A
 Challenge_A <- function() {
-  # Load necessary package
-  if(!require(ggplot2)) {
-    install.packages("ggplot2")
-    library(ggplot2)
-  }
   
-  # List all result files from the cluster simulation
-  files <- list.files(pattern = "^results_\\d+\\.rda$")
-  if(length(files) == 0) {
-    stop("No results files found in the working directory.")
-  }
+  png(filename="Challenge_A.png", width = 600, height = 400)
+  # Plot your graph here
+  Sys.sleep(0.1)
+  dev.off()
   
-  # Initialize list for collecting simulation data frames
-  simulation_data_list <- list()
-  simulation_counter <- 1
-  
-  # Loop through each file
-  for (file in files) {
-    # Extract job number from filename
-    job_num <- as.numeric(sub("results_(\\d+)\\.rda", "\\1", file))
-    
-    # Determine the initial condition label based on job number
-    if (job_num >= 1 && job_num <= 25) {
-      init_cond <- "large adult"
-    } else if (job_num >= 26 && job_num <= 50) {
-      init_cond <- "small adult"
-    } else if (job_num >= 51 && job_num <= 75) {
-      init_cond <- "large mixed"
-    } else {
-      init_cond <- "small mixed"
-    }
-    
-    # Load the file (which should produce a variable called results_list)
-    load(file)  # results_list is now in the environment
-    if (!exists("results_list")) {
-      warning(paste("File", file, "does not contain results_list. Skipping."))
-      next
-    }
-    
-    # For each simulation run in results_list, create a data frame of time series data.
-    # Each simulation is assumed to be a numeric vector recording population sizes.
-    for (sim in results_list) {
-      # Create time steps: assume the simulation vector includes time 0.
-      time_steps <- 0:(length(sim) - 1)
-      df_sim <- data.frame(
-        simulation_number = simulation_counter,
-        initial_condition = init_cond,
-        time_step = time_steps,
-        population_size = sim,
-        stringsAsFactors = FALSE
-      )
-      
-      simulation_data_list[[length(simulation_data_list) + 1]] <- df_sim
-      simulation_counter <- simulation_counter + 1
-    }
-    
-    # Remove results_list to avoid conflicts with the next file
-    rm(results_list)
-  }
-  
-  # Combine all simulation data frames into one long-form data frame.
-  population_size_df <- do.call(rbind, simulation_data_list)
-  
-  # Save the data frame in the global environment.
-  assign("population_size_df", population_size_df, envir = .GlobalEnv)
-  
-  # Create the ggplot: each simulation is a faint line colored by initial condition.
-  p <- ggplot(population_size_df, aes(x = time_step, y = population_size,
-                                      group = simulation_number, colour = initial_condition)) +
-    geom_line(alpha = 0.1) +
-    labs(x = "Time Step", y = "Population Size",
-         title = "Population Size Time Series from Cluster Simulations") +
-    theme_minimal()
-  
-  # Save the plot as Challenge_A.png
-  ggsave("Challenge_A.png", plot = p, width = 10, height = 6)
-  
-  # Return plain text answer
-  answer <- "The data frame 'population_size_df' has been created and the plot saved as 'Challenge_A.png'. Each row in the data frame represents a time point from a unique simulation run, with its initial condition noted. The plot, created with faint overlapping lines, visualizes the population size trajectories from all simulations. This long-form data presentation allows for a detailed comparison of the dynamics across the different initial conditions."
-  
-  return(answer)
 }
-
-# To run the function, simply call:
-result_text <- Challenge_A()
-print(result_text)
-
 
 # Challenge question B
 Challenge_B <- function() {
