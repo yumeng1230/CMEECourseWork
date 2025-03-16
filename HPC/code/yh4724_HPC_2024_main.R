@@ -49,7 +49,7 @@ sum_vect <- function(a, b) {
 question_1 <- function(){
   
   # Load the demographic model functions
-  source("Demographic.R")
+  source("demographic.R")
   
   # Define the projection matrix
   growth_matrix <- matrix(c(0.1, 0.0, 0.0, 0.0,
@@ -112,7 +112,7 @@ question_1 <- function(){
 question_2 <- function(){
   
   # Load the required demographic model functions
-  source("Demographic.R")
+  source("demographic.R")
   
   # Define the growth and reproduction matrices separately
   growth_matrix <- matrix(c(0.1, 0.0, 0.0, 0.0,
@@ -528,19 +528,11 @@ neutral_step_speciation <- function(community, speciation_rate) {
 
 
 # Question 16
-neutral_generation_speciation <- function(community, speciation_rate, steps = 1) {
-  # Sanity check on speciation_rate
-  if (speciation_rate < 0 || speciation_rate > 1) {
-    stop("speciation_rate must be between 0 and 1")
-  }
-  
-  # Repeat "steps" times
-  for (g in seq_len(steps)) {
-    # 1 generation = N birth-death events
-    N <- length(community)
-    for (i in seq_len(N)) {
-      community <- neutral_step_speciation(community, speciation_rate)
-    }
+neutral_generation_speciation <- function(community, speciation_rate) {
+  # One generation = number_of_individuals birth-death events
+  N <- length(community)
+  for (i in seq_len(N)) {
+    community <- neutral_step_speciation(community, speciation_rate)
   }
   return(community)
 }
@@ -1023,20 +1015,15 @@ Challenge_B <- function() {
   time_points       <- seq(sampling_interval, duration, sampling_interval)
   num_repeats       <- 30        # number of repeated simulations
   
-
-  #  Data Storage
+  # Data Storage
   richness_min_mat <- matrix(0, nrow = num_time_points, ncol = num_repeats)
   richness_max_mat <- matrix(0, nrow = num_time_points, ncol = num_repeats)
   
   # For each repeat:
-  #   (A) Min init: community <- rep(1, 100)
-  #       Burn in for 200 gens, then record every 20 for 2000 more gens
-  #
-  #   (B) Max init: community <- seq(1, 100)
-  #       Same procedure
-  # -------------------------
+  # (A) Min init: community <- rep(1, 100) then burn in, then record every 20 gens for 2000 gens.
+  # (B) Max init: community <- seq(1, 100), same procedure.
   for (rep_idx in 1:num_repeats) {
-
+    
     comm_min <- rep(1, community_size)
     # Burn-in for 200 generations
     for (i in 1:burn_in) {
@@ -1044,20 +1031,18 @@ Challenge_B <- function() {
     }
     # Now run 2000 more generations, sampling every 20
     for (t_idx in 1:num_time_points) {
-      # Advance 20 generations
       for (g in 1:sampling_interval) {
         comm_min <- neutral_generation_speciation(comm_min, speciation_rate)
       }
       richness_min_mat[t_idx, rep_idx] <- length(unique(comm_min))
     }
     
-   
     comm_max <- seq(1, community_size)
-    # Burn-in
+    # Burn-in for 200 generations
     for (i in 1:burn_in) {
       comm_max <- neutral_generation_speciation(comm_max, speciation_rate)
     }
-    # 2000 gens, sampling every 20
+    # 2000 generations, sampling every 20
     for (t_idx in 1:num_time_points) {
       for (g in 1:sampling_interval) {
         comm_max <- neutral_generation_speciation(comm_max, speciation_rate)
@@ -1067,9 +1052,6 @@ Challenge_B <- function() {
   }
   
   # Compute Mean + 97.2% CI
-  # mean ± z * (sd / sqrt(n))
-  # where z ~ qnorm(0.986) ~2.41 (for 97.2% CI)
-
   mean_min <- rowMeans(richness_min_mat)
   mean_max <- rowMeans(richness_max_mat)
   
@@ -1086,12 +1068,9 @@ Challenge_B <- function() {
   ci_lower_max <- mean_max - z_val * se_max
   ci_upper_max <- mean_max + z_val * se_max
   
-
   # Plot the Results
- 
   png("Challenge_B.png", width = 800, height = 500)
   
-  # Set up blank plot
   y_min <- min(ci_lower_min, ci_lower_max)
   y_max <- max(ci_upper_min, ci_upper_max)
   
@@ -1102,22 +1081,14 @@ Challenge_B <- function() {
        ylab = "Mean Species Richness",
        main = "Mean Species Richness vs. Time (97.2% CI)")
   
-  #
-  polygon(
-    x = c(time_points, rev(time_points)),
-    y = c(ci_lower_min, rev(ci_upper_min)),
-    col = rgb(1, 0, 0, 0.2),
-    border = NA
-  )
+  polygon(c(time_points, rev(time_points)),
+          c(ci_lower_min, rev(ci_upper_min)),
+          col = rgb(1, 0, 0, 0.2), border = NA)
   lines(time_points, mean_min, col = "red", lwd = 2)
   
-  # 
-  polygon(
-    x = c(time_points, rev(time_points)),
-    y = c(ci_lower_max, rev(ci_upper_max)),
-    col = rgb(0, 0, 1, 0.2),
-    border = NA
-  )
+  polygon(c(time_points, rev(time_points)),
+          c(ci_lower_max, rev(ci_upper_max)),
+          col = rgb(0, 0, 1, 0.2), border = NA)
   lines(time_points, mean_max, col = "blue", lwd = 2)
   
   legend("bottomright",
@@ -1126,8 +1097,7 @@ Challenge_B <- function() {
   
   dev.off()
   
-  #  Estimate Generations to "Dynamic Equilibrium"
-
+  # Estimate Generations to "Dynamic Equilibrium"
   final_min <- mean_min[num_time_points]
   final_max <- mean_max[num_time_points]
   
@@ -1135,23 +1105,23 @@ Challenge_B <- function() {
   consecutive_needed <- 5
   
   find_equilibrium_time <- function(vec, final_val) {
-    
     within_thresh <- abs(vec - final_val) <= threshold
-    
     for (i in 1:(length(vec) - consecutive_needed + 1)) {
       if (all(within_thresh[i:(i + consecutive_needed - 1)])) {
-        return(time_points[i])  
+        return(time_points[i])
       }
     }
-    return(time_points[length(time_points)])  
+    return(time_points[length(time_points)])
   }
   
   eq_min <- find_equilibrium_time(mean_min, final_min)
   eq_max <- find_equilibrium_time(mean_max, final_max)
-  eq_time <- max(eq_min, eq_max)  
+  eq_time <- max(eq_min, eq_max)
   
- 
-  # Return Plain Text
+  # Save computed results to an RDA file
+  save(richness_min_mat, richness_max_mat, mean_min, mean_max, se_min, se_max, 
+       ci_lower_min, ci_upper_min, ci_lower_max, ci_upper_max, eq_time,
+       file = "Challenge_B_results.rda")
   
   return(
     paste(
@@ -1163,7 +1133,6 @@ Challenge_B <- function() {
   )
 }
 
-
 # Challenge question C
 Challenge_C <- function() {
   
@@ -1174,7 +1143,7 @@ Challenge_C <- function() {
   duration          <- 2000        
   sampling_interval <- 20          
   num_repeats       <- 10          
-  init_range        <- seq(5, 100, by=5)  # Different starting species richness levels
+  init_range        <- seq(10, 100, by=10)  # Different starting species richness levels
   
   # 
   time_points <- seq(0, duration, by = sampling_interval)
@@ -1225,11 +1194,12 @@ Challenge_C <- function() {
   
   #Save the plot
   ggsave("Challenge_C.png", plot = p, width = 8, height = 6)
+
+save(plot_data, file = "Challenge_C_results.rda")
 }
-  
 # Challenge question D
 Challenge_D <- function() {
- 
+  
   files <- list.files(pattern = "^neutral_cluster_output_\\d+\\.rda$")
   if (length(files) == 0) {
     stop("No 'neutral_cluster_output_*.rda' files found in the working directory.")
@@ -1242,9 +1212,7 @@ Challenge_D <- function() {
     "5000" = list()
   )
   
-
   # Load each file, extract size + time_series, store
- 
   for (f in files) {
     load(f)  # should load at least: size, time_series, abundance_list, etc.
     
@@ -1300,9 +1268,7 @@ Challenge_D <- function() {
     mean_richness[[size_label]] <- colMeans(mat, na.rm = TRUE)
   }
   
-
   # Plot results
-
   longest_length <- 0
   for (vec in mean_richness) {
     if (!is.null(vec)) {
@@ -1310,7 +1276,6 @@ Challenge_D <- function() {
     }
   }
   
- 
   x_vals <- seq(0, longest_length - 1, by = 1)
   
   # Figure out global y-limits
@@ -1328,7 +1293,7 @@ Challenge_D <- function() {
   
   for (sz in c("500","1000","2500","5000")) {
     if (!is.null(mean_richness[[sz]])) {
-      lines(x_vals[1:length(mean_richness[[sz]])],  # x for the length of that vector
+      lines(x_vals[1:length(mean_richness[[sz]])],
             mean_richness[[sz]],
             col = color_map[sz], lwd = 2)
     }
@@ -1336,121 +1301,81 @@ Challenge_D <- function() {
   
   legend("bottomright",
          legend = c("size=500", "size=1000", "size=2500", "size=5000"),
-         col = c("red", "blue", "green", "purple"), lwd=2, bty="n")
+         col = c("red", "blue", "green", "purple"), lwd = 2, bty = "n")
   
   dev.off()
   
-  cat("Challenge_D complete. Plot saved as 'Challenge_D.png'\n")
+  # Save the computed results to an RDA file
+  save(mean_richness, file = "Challenge_D_results.rda")
+  
+  cat("Challenge_D complete. Plot saved as 'Challenge_D.png' and results saved as 'Challenge_D_results.rda'\n")
 }
-
-
 
 # Challenge question E
 Challenge_E <- function() {
   
-  # Set up Coalescence Simulation
- 
   coalescence_simulation <- function(size, speciation_rate) {
-    # Each of 'size' lineages starts with 1 individual
     lineages <- rep(1, size)
     abundances <- integer(0)
     num_lineages <- size
     
-    # Repeatedly coalesce or speciate until only 1 lineage left
     while (num_lineages > 1) {
-      # Random lineage j
       j <- sample(seq_len(num_lineages), 1)
       randnum <- runif(1)
       
       if (randnum < speciation_rate) {
-        # Speciate => move lineages[j] to 'abundances'
         abundances <- c(abundances, lineages[j])
       } else {
-        # Coalesce => pick another lineage i != j
         i <- sample(setdiff(seq_len(num_lineages), j), 1)
         lineages[i] <- lineages[i] + lineages[j]
       }
       
-      # Remove j-th lineage
       lineages <- lineages[-j]
       num_lineages <- num_lineages - 1
     }
     
-    # Last remaining lineage => add to abundances
     abundances <- c(abundances, lineages)
-    
-    # Sort descending
-    abundances <- sort(abundances, decreasing = TRUE)
-    return(abundances)
+    sort(abundances, decreasing = TRUE)
   }
-  
-  
-  # Define the sizes you want to compare
   
   sizes <- c(500, 1000, 2500, 5000)
   speciation_rate <- 0.1
   
-  # 
-  # Run Coalescence for Each Size
-  # 
   coalescence_results <- list()
   for (sz in sizes) {
     coalescence_results[[as.character(sz)]] <- coalescence_simulation(sz, speciation_rate)
   }
   
-  
-  #Load HPC "processed_results.rda"
- 
   if (!file.exists("processed_results.rda")) {
-    stop("File 'processed_results.rda' not found. Please run process_neutral_cluster_results() first.")
+    stop("File 'processed_results.rda' not found. Run process_neutral_cluster_results() first.")
   }
-  load("processed_results.rda")  # loads 'results_list'
+  load("processed_results.rda")
   
-  
-  #Create Side-by-Side Bar Charts 
-
   pad_to_length <- function(x, L) {
     c(x, rep(0, max(0, L - length(x))))
   }
-  rows <- 3
-  cols <- 2
-  if (length(sizes) > 6) {
-    rows <- ceiling(sqrt(length(sizes)))
-    cols <- ceiling(length(sizes) / rows)
-  }
   
   png("Challenge_E.png", width = 1000, height = 800)
-  par(mfrow = c(rows, cols), mar = c(4, 4, 2, 1))
+  par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+  
+  comparison_list <- list()
   
   for (sz in sizes) {
     size_char <- as.character(sz)
-    
     hpc_name <- paste0("mean_octave_", size_char)
     
-    if (!is.null(results_list[[hpc_name]])) {
-      hpc_oct <- results_list[[hpc_name]]
-    } else {
-      # If HPC data is missing, use an empty vector
-      hpc_oct <- numeric(0)
-      warning(paste("No HPC data found for size =", size_char))
-    }
-    
-    # Coalescence data => convert to octave distribution
+    hpc_oct <- if (!is.null(results_list[[hpc_name]])) results_list[[hpc_name]] else numeric(0)
     coalesced_abunds <- coalescence_results[[size_char]]
     coalesced_oct <- octaves(coalesced_abunds)
     
-    # Pad both octave vectors to the same length
     max_len <- max(length(hpc_oct), length(coalesced_oct))
     hpc_oct_pad <- pad_to_length(hpc_oct, max_len)
     coalesced_oct_pad <- pad_to_length(coalesced_oct, max_len)
     
-    # Build a 2 x max_len matrix: HPC in row1, coalescence in row2
     bar_matrix <- rbind(hpc_oct_pad, coalesced_oct_pad)
     rownames(bar_matrix) <- c("HPC", "Coalescence")
     
-    # side-by-side barplot
-    barplot(bar_matrix,
-            beside = TRUE,
+    barplot(bar_matrix, beside = TRUE,
             col = c("skyblue", "salmon"),
             names.arg = seq_len(max_len),
             border = NA,
@@ -1460,27 +1385,30 @@ Challenge_E <- function() {
     
     legend("topright", legend = c("HPC", "Coalescence"),
            fill = c("skyblue", "salmon"), bty = "n")
+    
+    comparison_list[[size_char]] <- list(
+      HPC_Octave = hpc_oct,
+      Coalescence_Abundance = coalesced_abunds,
+      Coalescence_Octave = coalesced_oct
+    )
   }
   
   dev.off()
   
-
-  #  Compare CPU Times (Optional)
   cluster_hours <- 25 * length(sizes) * 12
-  
-  # Coalescence total time (very rough or measured with system.time(...))
-  # For demonstration, we just do a dummy small number
   coalescence_time_hours <- 0.05
   
-  # Return text explanation
-  answer_text <- paste(
-    "Challenge_E: HPC vs. Coalescence for sizes:",
-    paste(sizes, collapse=", "),
-    "\nPlot saved as 'Challenge_E.png'.\n",
-    "Approx HPC CPU hours:", cluster_hours,
-    ";\nCoalescence took ~", coalescence_time_hours, "hours.\n",
-    "Coalescence is faster because it only reconstructs lineage histories, avoiding large birth-death simulations."
+  final_data <- list(
+    HPC_Octaves = results_list,
+    Coalescence = coalescence_results,
+    Comparison  = comparison_list
   )
+  save(final_data, file = "Challenge_E_data.rda")
   
-  return(answer_text)
+  return(paste(
+    "Challenge_E: HPC vs. Coalescence for sizes:", paste(sizes, collapse=", "),
+    "\nPlot saved as 'Challenge_E.png'.\nData saved to 'Challenge_E_data.rda'.\n",
+    "Approx HPC CPU hours:", cluster_hours, "; Coalescence took ~", coalescence_time_hours, "hours."
+  ))
 }
+
