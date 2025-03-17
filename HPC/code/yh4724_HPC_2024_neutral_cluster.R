@@ -2,7 +2,7 @@
 # For neutral model cluster run
 
 rm(list=ls()) # good practice 
-source("abc123_HPC_2024_main.R")
+source("yh4724_HPC_2024_main.R")
 
 # CMEE 2024 HPC Cluster Run Script for Neutral Model Simulations
 
