@@ -1,3 +1,60 @@
+# Project README
+
+## Overview
+This project focuses on processing growth data, fitting various growth models, comparing them using information criteria, visualizing estimated parameters, and compiling a LaTeX report. The workflow is organized into six R scripts.
+
+## Directory Structure
+```
+MiniProject/
+├── code/
+│   ├── 01_data_preprocessing.R              # Preprocess raw growth data
+│   ├── 02_define_and_fit_models.R           # Define and fit nonlinear growth models
+│   ├── 03_compare_models_and_akaike_weights.R # Compare models using AICc and BIC
+│   ├── 04_visualize_parameters.R            # Visualize estimated model parameters
+│   ├── 05_plot_each_id.R                    # Generate model plots for each dataset
+│   ├── 06_compile_latex.R                   # Compile LaTeX report
+│   ├── run_pipeline.sh                      # Script to run the entire workflow
+│   ├── main.tex                             # LaTeX document for the report
+│   ├── references.bib                        # Bibliography for LaTeX document
+│   ├── wordcount.txt                         # Word count log for the report
+├── data/
+│   ├── LogisticGrowthData.csv               # Raw growth data
+│   ├── modified_growth_data.csv             # Preprocessed growth data
+├── results/
+│   ├── *.rda                                # Model output files
+│   ├── *.png                                # Visualization outputs
+│   ├── .gitkeep                             # Placeholder file for results directory
+├── readme.md                                # Project documentation
+```
+
+## Prerequisites
+- **Operating System:** Windows, Linux, or macOS
+- **Required Software:**
+  - R (version 4.2.2 recommended)
+  - LaTeX (for compiling the report)
+  - Bash (for running shell scripts)
+- **R Packages:**
+  - dplyr, tidyr, ggplot2, minpack.lm, segmented, MuMIn, readr, broom
+
+## How to Run
+### Running the Full Pipeline
+```bash
+bash run_pipeline.sh
+```
+
+## Viewing Results
+- **R Analysis:** Load `.rda` results in R using `load("file.rda")`.
+- **Visualizations:** Generated `.png` files are available in the `results/` directory.
+- **LaTeX Report:** The compiled PDF report summarizes the entire analysis.
+
+## License
+This project is released under [your preferred license]. Please see the LICENSE file for details.
+
+## Contact
+For any questions or issues, please contact the project maintainer.
+
+
+
 Project Documentation: Growth Curve Model Analysis Pipeline
 
 This project focuses on processing growth data, fitting various growth models, comparing them using information criteria, visualizing estimated parameters, and compiling a LaTeX report. The workflow is organized into six R scripts. Below is an overview of each script including its purpose, dependencies, runtime environment, and usage instructions.
@@ -12,7 +69,7 @@ Environment and Setup
         LaTeX document (main.tex) is located in the working directory for compilation.
 
 
-1. 01_data_preprocessing.R
+***1. 01_data_preprocessing.R
 Overview
 
     Purpose:
@@ -42,7 +99,7 @@ Usage
     Place the raw data file (LogisticGrowthData.csv) in the ../data/ directory.
     Run the script. It generates the cleaned data file and, optionally, the polynomial model comparison file.
 
-2. 02_define_and_fit_models.R
+*****2. 02_define_and_fit_models.R
 Overview
 
     Purpose:
@@ -70,7 +127,7 @@ Usage
     Ensure that ../data/modified_growth_data.csv exists.
     Source or run this script to load the model definitions and fitting functions. It is typically sourced by subsequent scripts.
 
-3. 03_compare_models_and_akaike_weights.R
+*******3. 03_compare_models_and_akaike_weights.R
 Overview
 
     Purpose:
@@ -99,7 +156,7 @@ Usage
 
     Run this script after ensuring that the outputs from previous scripts are available. The script writes CSV files and saves plots (e.g., model_selection_comparison.png, akaike_weights_boxplot.png) in the ../results/ directory.
 
-4. 04_visualize_parameters.R
+*****4. 04_visualize_parameters.R
 Overview
 
     Purpose:
@@ -120,7 +177,7 @@ Usage
     Run this script to generate a CSV file (nonlinear_model_parameters.csv) containing parameter estimates.
     Parameter-specific boxplots are saved in the ../results/ directory (e.g., nonlinear_parameter_comparison_r_max.png).
 
-5. 05_plot_each_id.R
+*****5. 05_plot_each_id.R
 Overview
 
     Purpose:
@@ -142,7 +199,7 @@ Usage
     Run the script after ensuring that ../data/modified_growth_data.csv is available.
     The script iterates over each unique ID and saves corresponding plots (e.g., 6models_ID_1.png) in the results folder.
 
-6. 06_compile_latex.R
+*****6. 06_compile_latex.R
 Overview
 
     Purpose:
@@ -164,15 +221,15 @@ Usage
     Run this script. It will remove any old log file and call pdflatex to compile the document.
     Review the console messages to confirm success or troubleshoot any errors.
 
-7. LaTeX Document: main.tex
+*****7. LaTeX Document: main.tex
 Overview
 
     Purpose:
         The main.tex file contains the LaTeX code for compiling the final report of the analysis.
-        
+
         It integrates figures, tables, and summaries generated from the R scripts.
 
-8. Pipeline Script: run_pipeline.sh
+*****8. Pipeline Script: run_pipeline.sh
 Overview
 
     Purpose:

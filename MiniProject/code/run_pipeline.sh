@@ -45,7 +45,7 @@ done
 if [ -f main.tex ]; then
   echo "Compiling LaTeX document..."
   pdflatex -output-directory=results main.tex
-  bibtex results/main
+  bibtex main
   pdflatex -output-directory=results main.tex
   pdflatex -output-directory=results main.tex
   if [ $? -ne 0 ]; then

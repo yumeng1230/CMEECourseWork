@@ -18,7 +18,7 @@
 
 
 \newcommand\wordcount{%
-  \immediate\write18{texcount -sum -1 main.tex > wordcount.txt} % 
+  \immediate\write18{texcount -sum -inc -0 main.tex > wordcount.txt} % 
   \input{wordcount.txt} % 
 }
 
