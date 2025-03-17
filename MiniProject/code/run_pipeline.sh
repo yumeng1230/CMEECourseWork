@@ -1,9 +1,8 @@
 #!/bin/bash
 # run_pipeline.sh
-#!/bin/bash
-# run_pipeline.sh
 # This script runs a sequence of R scripts, compiles a LaTeX document,
 # prints the reference list (if available), and performs a word count.
+# It also sets latex.sh executable and runs it against Miniproject.tex.
 #
 # The R scripts executed are:
 #   01_data_preprocessing.R
@@ -15,16 +14,19 @@
 
 # Set the working directory to the directory containing this script
 WORKDIR="$(dirname "$0")"
-cd "$WORKDIR" || { echo "Error: Unable to change directory to $WORKDIR"; exit 1; }
+cd "$WORKDIR" || {
+  echo "Error: Unable to change directory to $WORKDIR"
+  exit 1
+}
 
 # Define the list of R script files to run
 FILES=(
- "01_data_preprocessing.R"
- "02_define_and_fit_models.R"
- "03_compare_models_and_akaike_weights.R"
- "04_visualize_parameters.R"
- "05_plot_each_id.R"
- "06_compile_latex.R"
+  "01_data_preprocessing.R"
+  "02_define_and_fit_models.R"
+  "03_compare_models_and_akaike_weights.R"
+  "04_visualize_parameters.R"
+  "05_plot_each_id.R"
+  "06_compile_latex.R"
 )
 
 # Run each R script in order
@@ -56,7 +58,7 @@ else
   echo "main.tex not found, skipping LaTeX compilation."
 fi
 
-# Display the reference list if the bbl file exists
+# Display the reference list if the .bbl file exists
 if [ -f results/main.bbl ]; then
   echo "Reference list:"
   cat results/main.bbl
@@ -72,4 +74,18 @@ else
   echo "texcount command not found. Please install texcount for word count statistics."
 fi
 
+################################################
+# New lines to set and run latex.sh on Miniproject.tex
+################################################
+
+if [ -f latex.sh ]; then
+  echo "Setting latex.sh as executable..."
+  chmod +x latex.sh
+  echo "Running latex.sh on Miniproject.tex..."
+  ./latex.sh Miniproject.tex
+else
+  echo "latex.sh not found, skipping additional LaTeX step."
+fi
+
 echo "Pipeline executed successfully."
+
