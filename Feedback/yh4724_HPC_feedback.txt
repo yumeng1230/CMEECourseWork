@@ -1,0 +1,83 @@
+HPC long practical feedback for Yumeng ( Yumeng Huang ) 2025
+ 
+email : yh4724@ic.ac.uk
+username : yh4724
+ 
+Your final mark is : 87.13 %
+ 
+Mark allocation break down
+1) Technically correct answers to all questions worth 60 % of final grade
+Your mark :  56.1 /60
+2) Quality of free text answers worth 8 % of final grade
+Your mark :  5.6 /8
+3) Quality of graphical outputs worth 8 % of final grade
+Your mark :  8.6 /10
+4) Quality of code worth 8 % of final grade
+Your mark :  7 /8
+5) Answers to challenge questions worth 16 % of final grade
+Your mark :  9.8 /14
+ 
+Marks for main questions
+Q 0 :    3 / 3
+Q 1 :    4 / 4
+Q 2 :    3 / 3
+Q 3 :    10 / 10
+Q 4 :    10 / 10
+Q 5 :    7 / 8    comments: the point about 'lower local densities' Isn't well explained and is probably not correct. The main reason why spread has a negative effect is that many individuals are not reproductively mature yet and we'd need to factor in their chance of death before adulthood in order to fairly account for this.
+Q 6 :    7 / 10    comments: function didn't run initially because it relied the deterministic_simulation function which was buried in another file that didn't get sourced
+Q 7 :    2 / 2
+Q 8 :    1 / 1
+Q 9 :    1 / 1
+Q 10 :    2 / 2
+Q 11 :    2 / 2
+Q 12 :    2 / 2
+Q 13 :    2 / 2
+Q 14 :    2 / 3    comments: good but the written answer isn't really correct - species do not have an equal chance of extinction, individuals have an equal chance of death. Some species will get rare due to ecological drift and if unlucky will go extinct. Needed to make explicit that no speciation means extinct species cannot be replaced'
+Q 15 :    3 / 3
+Q 16 :    1 / 1
+Q 17 :    1 / 1
+Q 18 :    4 / 4
+Q 19 :    3 / 3
+Q 20 :    3 / 3
+Q 21 :    2 / 2
+Q 22 :    3 / 4    comments: errors in the function - it calls neutral_generation_speciation with three parameters when the function is only written to receive two. This meant it didn't work and needed to be fixed before I could evaluate the function performance. Once fixed it was excellent.
+Q 23 :    6 / 6
+Q 24 :    6 / 6
+Q 25 :    10 / 10
+Q 26 :    8.5 / 10    comments: the speciation rate was supplied in class in the form of code the generated a different rate for each student 0.1 was not correct. The results themselves were correct for a 0.1 speciation rate so everything was working as it should
+          ---------
+Total     108.5 / 116
+          ---------
+ 
+Marks for text quality :  5.6 /8
+Comments...
+In question 1 excellent
+In question 2 excellent
+In question 5 would benefit from more detailed explanation and clarity
+In question 6 good, shows understanding but could have gone deeper
+In question 14 good, has some of the essential points but unfortunately shows some lack of understanding
+In question 18 excellent
+In question 22 good but some minor slips in understanding e.g. around difference between an individual and a species in terms of the model
+ 
+Marks for graphics quality :  8.6 /10
+Comments...
+In question 1 excellent though the legend obscured some of the data
+In question 2 excellent though ideally I'd rescale the y axis
+In question 5 excellent, if being picky I'd suggest get rid of the box around the legend.
+In question 6 excellent, ideally we would not have a box around the legend for aesthetic reasons
+In question 14 excellent
+In question 18 excellent
+In question 22 octaves not labelled
+In question 26 good but no octave labels and on one plot the data went well outside the y axis limits
+ 
+Marks for code quality :  7 /8
+Comments...
+very good but some room for improvement in comments
+ 
+Marks for challenge questions :  9.8 /14
+Comments...
+challenge question A, excellent, a minor comment, but the legend would benefit from some tweaking (turn off the see through for the legend as it's not clear otherwise), I would prefer normal axes to a grid
+challenge question B, good but the graph should ideally have shown the approach to equilibrium and not a set of time series so sparsely sampled.  Computational approach was slower than it needed to be - would have been better to do much shorter time series with more repeats
+challenge question C, very good but focused on the wrong part of the time series - better would be to focus on the approach to equilibrium
+challenge question D, good but didn't really approach the second part of the question which was to use the graph to get an idea of how long the burn in time needed to be.
+challenge question E, nice start but unfortunately not correct because the coalescence simulation didn't match the forwards in time simulation of the main cluster run.
